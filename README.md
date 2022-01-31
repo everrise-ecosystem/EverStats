@@ -5,7 +5,7 @@
 * Twitter EverWatch pricebot (https://twitter.com/everrisewatcher)
 * Website stats page
 
-Data points (in RISE, ETH, BNB, MATIC, FTM, AVAX and USDT equv) for:
+Data points (in RISE, ETH, BNB, MATIC, FTM, AVAX and USDT equv) across 5 chains and unified supply numbers for:
 
 * Encompassing EverBridge arbitrage opportunity visualisation
 
