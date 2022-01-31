@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31612.314
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EverStats", "src\EverStats.csproj", "{3939F8D9-B4CB-4F2C-927F-B8E004A6E756}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{56BC6FA6-3DA2-4F4F-96A1-B0CB0DF01D9B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "contracts", "contracts", "{BFBCEF3D-249A-417B-AD0A-9040337C1010}"
+	ProjectSection(SolutionItems) = preProject
+		contracts\EverRiseStaked.sol = contracts\EverRiseStaked.sol
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3939F8D9-B4CB-4F2C-927F-B8E004A6E756}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3939F8D9-B4CB-4F2C-927F-B8E004A6E756}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3939F8D9-B4CB-4F2C-927F-B8E004A6E756}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3939F8D9-B4CB-4F2C-927F-B8E004A6E756}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3939F8D9-B4CB-4F2C-927F-B8E004A6E756} = {56BC6FA6-3DA2-4F4F-96A1-B0CB0DF01D9B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8F0B227D-1C28-4244-B9CD-AAD2CEF0B2DD}
+	EndGlobalSection
+EndGlobal
