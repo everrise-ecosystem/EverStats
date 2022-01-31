@@ -41,3 +41,7 @@ Data points (in RISE, ETH, BNB, MATIC, FTM, AVAX and USDT equv) across 5 chains 
 * Total Sell
 * Total Trade
 * Total Rewards
+
+## Submitted to the Moralis + Avalanche Hackathon
+
+[![image](https://user-images.githubusercontent.com/87881922/151815235-993cb1ab-5b80-463b-9ec6-6af7dfeae383.png)](https://moralis.io/avalanche-hackathon/)
