@@ -5,6 +5,11 @@
 * Twitter EverWatch pricebot (https://twitter.com/everrisewatcher)
 * Website stats page
 
+Utilizing:
+
+* Chainlink pricefeeds for native coin pricing for ETH, BNB, MATIC, FTM and AVAX
+* Moralis Web3 API for current and archive blockchain data
+
 Data points (in RISE, ETH, BNB, MATIC, FTM, AVAX and USDT equv) across 5 chains and unified supply numbers for:
 
 * Encompassing EverBridge arbitrage opportunity visualisation
@@ -36,8 +41,3 @@ Data points (in RISE, ETH, BNB, MATIC, FTM, AVAX and USDT equv) across 5 chains 
 * Total Sell
 * Total Trade
 * Total Rewards
-
-Utilizing:
-
-* Chainlink pricefeeds for native coin pricing for ETH, BNB, MATIC, FTM and AVAX
-* Moralis Web3 API for current and archive blockchain data
