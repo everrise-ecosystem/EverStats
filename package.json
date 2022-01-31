@@ -1,0 +1,18 @@
+{
+  "name": "everrise-pricing",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "yarn@3.0.0",
+  "scripts": {
+    "build:dev": "esbuild src/scripts/main.ts --sourcemap=inline --bundle --target=chrome92 --outfile=src/wwwroot/scripts/everstats.js",
+    "build:release": "esbuild src/scripts/main.ts --minify --bundle --target=chrome92 --outfile=src/wwwroot/scripts/everstats.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.12.18",
+    "typescript": "4.3.5",
+    "@types/big.js": "6.1.1"
+  },
+  "dependencies": {
+    "big.js": "6.1.1"
+  }
+}

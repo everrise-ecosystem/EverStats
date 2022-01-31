@@ -11,4 +11,8 @@
     <PackageReference Include="Svg" Version="3.4.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\scripts\" />
+  </ItemGroup>
+
 </Project>
