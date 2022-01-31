@@ -1,4 +1,4 @@
-# EverStats
+# EverRise: EverStats
 
 * Stats api feed for current, 24hr and 48hr data across 5 blockchains (Ethereum, BSC, Avalanche, Polygon and Fantom)
 * Youtube live EverCharts feed (https://www.youtube.com/c/EverChart/live)
