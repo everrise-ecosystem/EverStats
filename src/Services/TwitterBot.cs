@@ -124,16 +124,16 @@ public class TwitterBot : IHostedService
         bitmap.Save(bitmapSteam, ImageFormat.Png);
         var imageData = bitmapSteam.ToArray();
 
-        if (imageData != null)
-        {
-            var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
-            var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
-            await twitterContext.TweetMediaAsync(tweet, mediaIds);
-        }
-        else
-        {
-            await twitterContext.TweetAsync(tweet);
-        }
+        //if (imageData != null)
+        //{
+        //    var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
+        //    var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
+        //    await twitterContext.TweetMediaAsync(tweet, mediaIds);
+        //}
+        //else
+        //{
+        //    await twitterContext.TweetAsync(tweet);
+        //}
         Console.WriteLine(tweet);
 
         Console.WriteLine("");

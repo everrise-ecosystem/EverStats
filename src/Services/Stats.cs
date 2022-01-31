@@ -113,6 +113,18 @@ public class Stats : IHostedService
             unified.history48hrs = sample;
         }
 
+        sample = Recalculate(bsc.history7day, eth.history7day, poly.history7day, ftm.history7day, avax.history7day);
+        if (sample is not null)
+        {
+            unified.history7day = sample;
+        }
+
+        sample = Recalculate(bsc.history14day, eth.history14day, poly.history14day, ftm.history14day, avax.history14day);
+        if (sample is not null)
+        {
+            unified.history14day = sample;
+        }
+
         bsc.CreateStringRepresentations();
         eth.CreateStringRepresentations();
         poly.CreateStringRepresentations();
@@ -144,7 +156,7 @@ public class Stats : IHostedService
             var chain = samples[i];
             if (chain is null) continue;
 
-            var supply = totalSupply - chain.bridgeVaultValue;
+            var supply = chain.bridgeVaultValue == 0 ? 0 : totalSupply - chain.bridgeVaultValue;
             supplyTotal += supply;
             supplyWeights[i] = supply;
 
@@ -223,10 +235,11 @@ public class Stats : IHostedService
             var chain = samples[i];
             if (chain is null) continue;
 
-            chain.supplyOnChainPercentValue = supplyWeights[i];
-            chain.stakedOfTotalSupplyPercentValue = chain.stakedValue / supplyTotal;
-            chain.stakedOfOnChainPercentValue = chain.stakedValue / (supplyWeights[i] * totalSupply);
-            chain.stakedOfTotalStakedPercentValue = chain.stakedValue / stakingTotal;
+            var supplyOnChainPercentValue = supplyWeights[i];
+            chain.supplyOnChainPercentValue = supplyOnChainPercentValue;
+            chain.stakedOfTotalSupplyPercentValue = supplyTotal == 0 ? 0 : chain.stakedValue / supplyTotal;
+            chain.stakedOfOnChainPercentValue = supplyOnChainPercentValue == 0 ? 0 : chain.stakedValue / (supplyOnChainPercentValue * totalSupply);
+            chain.stakedOfTotalStakedPercentValue = supplyTotal == 0 ? 0 : chain.stakedValue / stakingTotal;
         }
 
         var sample = new BlockchainSample()

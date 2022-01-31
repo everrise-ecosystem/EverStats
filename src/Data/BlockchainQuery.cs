@@ -27,9 +27,15 @@ public class BlockchainQuery
 
     private DateTimeOffset _lastHistoryCheck24hrs;
     private DateTimeOffset _lastHistoryCheck48hrs;
+    private DateTimeOffset _lastHistoryCheck7day;
+    private DateTimeOffset _lastHistoryCheck14day;
 
     private Task _history24hrTask = Task.CompletedTask;
     private Task _history48hrTask = Task.CompletedTask;
+    private Task _history7dayTask = Task.CompletedTask;
+    private Task _history14dayTask = Task.CompletedTask;
+
+    private DateTimeOffset _avaxFtmLaunch = new DateTimeOffset(new DateTime(2022, 01, 23, 22, 50, 00));
 
     public BlockchainQuery(ApiConfig config, BlockchainStats stats, string[] currentEndpoints, string[] archiveEndpoints, string statsContractAddress)
     {
@@ -50,6 +56,14 @@ public class BlockchainQuery
         return client;
     }
 
+    public enum Period
+    {
+        History24hr,
+        History48hr,
+        History7day,
+        History14day,
+    }
+
     public async Task GetData()
     {
         _stats.current = await QueryStats(_currentEndpoints, "latest", checkBlock: true);
@@ -61,58 +75,119 @@ public class BlockchainQuery
         {
             _stats.history48hrs = _stats.current;
         }
+        if (_stats.history7day is null)
+        {
+            _stats.history7day = _stats.current;
+        }
+        if (_stats.history14day is null)
+        {
+            _stats.history14day = _stats.current;
+        }
 
         var now = DateTimeOffset.UtcNow;
         if (_history24hrTask.IsCompleted)
         {
-            _history24hrTask = GetDataHistoricData(now, is48: false);
+            _history24hrTask = GetDataHistoricData(now, Period.History24hr);
         }
 
         if (_history48hrTask.IsCompleted)
         {
-            _history48hrTask = GetDataHistoricData(now, is48: true);
+            _history48hrTask = GetDataHistoricData(now, Period.History48hr);
+        }
+
+        if (_history7dayTask.IsCompleted)
+        {
+            _history7dayTask = GetDataHistoricData(now, Period.History7day);
+        }
+
+        if (_history14dayTask.IsCompleted)
+        {
+            _history14dayTask = GetDataHistoricData(now, Period.History14day);
         }
     }
 
-    public async Task GetDataHistoricData(DateTimeOffset date, bool is48)
+    public async Task GetDataHistoricData(DateTimeOffset date, Period period)
     {
         try
         {
-            if ((date - (is48 ? _lastHistoryCheck48hrs : _lastHistoryCheck24hrs)).TotalHours > 0.5)
+            var historyCheck = period switch
             {
-                var queryDate = DateTimeOffset.UtcNow.AddDays(is48 ? -2 : -1);
+                Period.History24hr => _lastHistoryCheck24hrs,
+                Period.History48hr => _lastHistoryCheck48hrs,
+                Period.History7day => _lastHistoryCheck7day,
+                Period.History14day => _lastHistoryCheck14day,
+                _ => _lastHistoryCheck24hrs,
+            };
+
+            var days = period switch
+            {
+                Period.History24hr => 1,
+                Period.History48hr => 2,
+                Period.History7day => 7,
+                Period.History14day => 14,
+                _ => 0,
+            };
+
+            var queryDate = DateTimeOffset.UtcNow.AddDays(-days);
+
+            BlockchainSample historyData = null;
+            if ((_stats.Chain == "avalanche" || _stats.Chain == "fantom") && queryDate < _avaxFtmLaunch)
+            {
+                historyData = new BlockchainSample();
+            }
+            else if ((date - historyCheck).TotalHours > 0.5)
+            {
                 var blockNumber = await QueryBlock(queryDate);
                 if (blockNumber == 0) throw new InvalidDataException("Zero block number");
 
-                var historyData = await QueryStats(_historyEndpoints, "0x" + NumberToHex(blockNumber));
+                historyData = await QueryStats(_historyEndpoints, "0x" + NumberToHex(blockNumber));
+            }
+
+            if (historyData is not null)
+            {
                 historyData.date = queryDate.ToString("s");
 
-                if (!is48)
+                switch (period)
                 {
-                    _stats.history24hrs = historyData;
-                    _lastHistoryCheck24hrs = date;
+                    case Period.History24hr:
+                        _stats.history24hrs = historyData;
+                        _lastHistoryCheck24hrs = date;
+                        break;
+                    case Period.History48hr:
+                        _stats.history48hrs = historyData;
+                        _lastHistoryCheck48hrs = date;
+                        break;
+                    case Period.History7day:
+                        _stats.history7day = historyData;
+                        _lastHistoryCheck7day = date;
+                        break;
+                    case Period.History14day:
+                        _stats.history14day = historyData;
+                        _lastHistoryCheck14day = date;
+                        break;
                 }
-                else
-                {
-                    _stats.history48hrs = historyData;
-                    _lastHistoryCheck48hrs = date;
-                }
-
             }
         }
         catch (Exception ex)
         {
             var checkDate = date.Subtract(TimeSpan.FromHours(0.25));
-            if (!is48)
+            switch (period)
             {
-                _lastHistoryCheck24hrs = checkDate;
-            }
-            else
-            {
-                _lastHistoryCheck48hrs = checkDate;
+                case Period.History24hr:
+                    _lastHistoryCheck24hrs = checkDate;
+                    break;
+                case Period.History48hr:
+                    _lastHistoryCheck48hrs = checkDate;
+                    break;
+                case Period.History7day:
+                    _lastHistoryCheck7day = checkDate;
+                    break;
+                case Period.History14day:
+                    _lastHistoryCheck14day = checkDate;
+                    break;
             }
 
-            Console.WriteLine(_stats.Chain + " : " + ex.Message);
+            Console.WriteLine($"{_stats.Chain} {period} : {ex.Message}");
             _web3Client?.Dispose();
             _web3Client = GetHttpClient();
             _web3Client.DefaultRequestHeaders.Add("X-API-Key", _config.MoralisConfiguration.Web3ApiKey);
@@ -283,15 +358,6 @@ public class BlockchainQuery
 
         var json = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<RpcResult>(json);
-    }
-
-    private async Task<Block?> QueryBlockEndpoint(string endpoint, HttpContent content)
-    {
-        using var response = await _nodeClient.PostAsync(endpoint, content);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<Block>(json);
     }
 
     public decimal HexToDecimal(ReadOnlySpan<char> hex, bool isHexLittleEndian = false)
