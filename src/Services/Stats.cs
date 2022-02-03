@@ -34,6 +34,21 @@ public class Stats : IHostedService
     public byte[] JsonBytesBr = Array.Empty<byte>();
     public byte[] JsonBytesGzip = Array.Empty<byte>();
 
+    public async Task<decimal> QueryConinPrice(string chain, int blockNumber)
+    {
+        var stats = await (chain switch
+        {
+            "eth" => _ethQuery.QueryHistoricStats(blockNumber),
+            "bsc" => _ethQuery.QueryHistoricStats(blockNumber),
+            "poly" => _ethQuery.QueryHistoricStats(blockNumber),
+            "ftm" => _ethQuery.QueryHistoricStats(blockNumber),
+            "avax" => _ethQuery.QueryHistoricStats(blockNumber),
+            _ => null
+        });
+
+        return stats.coinPriceStableValue;
+    }
+
     internal Task DataReceived()
     {
         return _dataSemaphore.WaitAsync();

@@ -1,18 +1,19 @@
 ﻿// Copyright (c) EverRise Pte Ltd. All rights reserved.
 
-using EverStats.Config;
-
-using System.Drawing.Imaging;
 using System.Text;
+using System.Text.Json;
 
 using LinqToTwitter;
 using LinqToTwitter.OAuth;
-using Svg;
+using EverStats.Config;
 using EverStats.Data;
+using Svg.Skia;
+using SkiaSharp;
 
 namespace EverStats.Services;
 public class TwitterBot : IHostedService
 {
+    static StringBuilder s_svg = new StringBuilder();
     private ApiConfig _config;
     private Stats _stats;
     private CancellationTokenSource _cts = new CancellationTokenSource();
@@ -37,7 +38,6 @@ public class TwitterBot : IHostedService
 
         return Task.CompletedTask;
     }
-
 
     private async Task GenerateTweets()
     {
@@ -64,7 +64,6 @@ public class TwitterBot : IHostedService
 
     private async Task GenerateTweets(StringBuilder sb)
     {
-
         var (price, change) = GetPriceChange(_stats.unified);
         sb.AppendLine($"💵 ${price:0.0000000} Δ {FormatChange(change)} {ChangeIcon(change)}");
         sb.AppendLine();
@@ -89,18 +88,18 @@ public class TwitterBot : IHostedService
         sb.AppendLine($"💰 ${FormatNumber(_stats.unified.current.marketCapValue)} MC {FormatChange(change)}");
 
         change = GetChange(_stats.unified.history24hrs.holdersValue, _stats.unified.current.holdersValue);
-        sb.AppendLine($"🤝 {_stats.unified.current.holders:N0} Holders {FormatChange(change)}");
+        sb.AppendLine($"🤝 {_stats.unified.current.holders:N0} Hodlrs {FormatChange(change)}");
 
         sb.AppendLine();
         change = GetChange(_stats.unified.history24hrs.usdStakedValue, _stats.unified.current.usdStakedValue);
         sb.AppendLine($"🔐 ${FormatNumber(_stats.unified.current.usdStakedValue)} Staked TVL");// {FormatChange(change)}");
         sb.AppendLine();
         change = GetPercent(_stats.unified.current.usdLiquidityCoinValue, _stats.unified.current.marketCapValue);
-        sb.AppendLine($"💧 ${FormatNumber(_stats.unified.current.usdLiquidityCoinValue * 2)} Liquidity");
+        sb.AppendLine($"💧 ${FormatNumber(_stats.unified.current.usdLiquidityCoinValue * 2)} LP");
         change = GetPercent(_stats.unified.current.usdReservesBalanceValue, _stats.unified.current.marketCapValue);
         sb.AppendLine($"🐳 ${FormatNumber(_stats.unified.current.usdReservesBalanceValue)} Buyback");
         sb.AppendLine();
-        sb.AppendLine("#EverRise");
+        sb.Append("#EverRise");
 
         var tweet = sb.ToString();
         sb.Clear();
@@ -116,26 +115,28 @@ public class TwitterBot : IHostedService
             }
         });
 
-        var svg = GetSpreadSvg(_stats);
-        var svgDoc = SvgDocument.Open<SvgDocument>(new MemoryStream(Encoding.UTF8.GetBytes(svg ?? "")));
+        var svgXml = GetSpreadSvg(_stats);
+        byte[] imageData;
+        using (var svg = new SKSvg())
+        {
+            svg.Load(new MemoryStream(Encoding.UTF8.GetBytes(svgXml ?? "")));
+            var bitmapSteam = new MemoryStream();
+            svg.Picture.ToImage(bitmapSteam, SKColors.Empty, SKEncodedImageFormat.Png, 100, 1f, 1f, SKColorType.Rgb888x, SKAlphaType.Premul, SKSvgSettings.s_srgb);
+            imageData = bitmapSteam.ToArray();
+        }
 
-        var bitmap = svgDoc.Draw(420 * 2, 420);
-        var bitmapSteam = new MemoryStream();
-        bitmap.Save(bitmapSteam, ImageFormat.Png);
-        var imageData = bitmapSteam.ToArray();
+        if (imageData != null)
+        {
+            var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
+            var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
+            await twitterContext.TweetMediaAsync(tweet, mediaIds);
+        }
+        else
+        {
+            await twitterContext.TweetAsync(tweet);
+        }
 
-        //if (imageData != null)
-        //{
-        //    var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
-        //    var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
-        //    await twitterContext.TweetMediaAsync(tweet, mediaIds);
-        //}
-        //else
-        //{
-        //    await twitterContext.TweetAsync(tweet);
-        //}
         Console.WriteLine(tweet);
-
         Console.WriteLine("");
         Console.WriteLine("*****");
         Console.WriteLine("");
@@ -151,7 +152,6 @@ public class TwitterBot : IHostedService
         "rgba(255,255,255,1)"
     };
 
-    static StringBuilder s_svg = new StringBuilder();
     private static string GetSpreadSvg(Stats stats)
     {
         var sb = s_svg;

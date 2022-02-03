@@ -24,4 +24,18 @@ public static class MiddlewareExtensions
 
         return app.UseMiddleware<StatsMiddleware>();
     }
+    /// <summary>
+    /// Adds the <see cref="StatsMiddleware"/> 
+    /// </summary>
+    /// <param name="app">The <see cref="IApplicationBuilder"/>.</param>
+    /// <returns>The <see cref="IApplicationBuilder"/>.</returns>
+    public static IApplicationBuilder UseCoinPricing(this IApplicationBuilder app)
+    {
+        if (app == null)
+        {
+            throw new ArgumentNullException(nameof(app));
+        }
+
+        return app.UseMiddleware<PricingMiddleware>();
+    }
 }

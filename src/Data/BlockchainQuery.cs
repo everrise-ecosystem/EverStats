@@ -221,6 +221,11 @@ public class BlockchainQuery
         return blockNumber.Substring(i);
     }
 
+    public Task<BlockchainSample?> QueryHistoricStats(int blockNumber)
+    {
+        return QueryStats(_historyEndpoints, "0x" + NumberToHex(blockNumber));
+    }
+
     private async Task<BlockchainSample?> QueryStats(string[] apiEndpoints, string blockNumber, bool checkBlock = false)
     {
         if (apiEndpoints.Length == 0) return null;

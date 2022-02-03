@@ -61,6 +61,8 @@ interface BlockchainData {
     bsc: ChainData;
     eth: ChainData;
     poly: ChainData;
+    ftm: ChainData;
+    avax: ChainData;
 }
 
 interface Data {
@@ -104,6 +106,15 @@ interface Data {
     volumeTrade24hr: Stat;
     volumeTradeUSDT24hr: Stat;
 
+    volumeTransfers7day: Stat;
+    volumeTransfersUSDT7day: Stat;
+    volumeBuy7day: Stat;
+    volumeBuyUSDT7day: Stat;
+    volumeSell7day: Stat;
+    volumeSellUSDT7day: Stat;
+    volumeTrade7day: Stat;
+    volumeTradeUSDT7day: Stat;
+
     stakedToken: Stat;
     stakedUSDT: Stat;
     stakedPercent: Stat;
@@ -112,8 +123,10 @@ interface Data {
 
     rewardsToken: Stat;
     rewardsToken24hr: Stat;
+    rewardsToken7day: Stat;
     rewardsUSDT: Stat;
     rewardsUSDT24hr: Stat;
+    rewardsUSDT7day: Stat;
 
     [Symbol.iterator]();
 }
@@ -175,6 +188,16 @@ class Coin {
             volumeTrade24hr: Coin.CreateStat(`.ticker-${network}-vol-trade-24hr`, 2),
             volumeTradeUSDT24hr: Coin.CreateStat(`.ticker-${network}-vol-trade-usdt-24hr`, 2),
 
+
+            volumeTransfers7day: Coin.CreateStat(`.ticker-${network}-vol-txns-7day`, 2),
+            volumeTransfersUSDT7day: Coin.CreateStat(`.ticker-${network}-vol-txns-usdt-7day`, 2),
+            volumeBuy7day: Coin.CreateStat(`.ticker-${network}-vol-buy-7day`, 2),
+            volumeBuyUSDT7day: Coin.CreateStat(`.ticker-${network}-vol-buy-usdt-7day`, 2),
+            volumeSell7day: Coin.CreateStat(`.ticker-${network}-vol-sell-7day`, 2),
+            volumeSellUSDT7day: Coin.CreateStat(`.ticker-${network}-vol-sell-usdt-7day`, 2),
+            volumeTrade7day: Coin.CreateStat(`.ticker-${network}-vol-trade-7day`, 2),
+            volumeTradeUSDT7day: Coin.CreateStat(`.ticker-${network}-vol-trade-usdt-7day`, 2),
+
             stakedToken: Coin.CreateStat(`.ticker-${network}-staked-token`, 2),
             stakedUSDT: Coin.CreateStat(`.ticker-${network}-staked-usdt`, 2),
             stakedPercent: Coin.CreateStat(`.ticker-${network}-staked-percent`, 4),
@@ -184,8 +207,10 @@ class Coin {
 
             rewardsToken: Coin.CreateStat(`.ticker-${network}-rewards-token`, 2),
             rewardsToken24hr: Coin.CreateStat(`.ticker-${network}-rewards-token-24hr`, 2),
+            rewardsToken7day: Coin.CreateStat(`.ticker-${network}-rewards-token-7day`, 2),
             rewardsUSDT: Coin.CreateStat(`.ticker-${network}-rewards-usdt`, 2),
             rewardsUSDT24hr: Coin.CreateStat(`.ticker-${network}-rewards-usdt-24hr`, 2),
+            rewardsUSDT7day: Coin.CreateStat(`.ticker-${network}-rewards-usdt-7day`, 2),
 
             *[Symbol.iterator]() {
                 yield data.coinPriceUSDT;
@@ -215,9 +240,19 @@ class Coin {
                 yield data.volumeTransfersUSDT24hr;
                 yield data.volumeTradeUSDT24hr;
 
+                yield data.volumeTransfers7day;
+                yield data.volumeBuy7day;
+                yield data.volumeSell7day;
+                yield data.volumeTrade7day;
+                yield data.volumeSellUSDT7day;
+                yield data.volumeBuyUSDT7day;
+                yield data.volumeTransfersUSDT7day;
+                yield data.volumeTradeUSDT7day;
+
                 yield data.stakedToken;
                 yield data.rewardsToken;
                 yield data.rewardsToken24hr;
+                yield data.rewardsToken7day;
 
                 yield data.tokenPriceCoin;
                 yield data.tokenPriceUSDT;
@@ -233,6 +268,7 @@ class Coin {
                 yield data.stakedOnChain;
                 yield data.rewardsUSDT;
                 yield data.rewardsUSDT24hr;
+                yield data.rewardsUSDT7day;
             }
         };
 
@@ -356,7 +392,7 @@ class Coin {
                 return;
             }
 
-            Coin.PopulateData(data, chainData.current, chainData, "now", "history24hrs");
+            Coin.PopulateData(data, chainData.current, chainData, "now", "history24hrs", "current", "history7day");
         }
 
         const historyBlock = Number(chainData.history24hrs.blockNumber);
@@ -364,13 +400,13 @@ class Coin {
         {
             data.blockNumber.history24hr = historyBlock;
 
-            Coin.PopulateData(data, chainData.history24hrs, chainData, "yesterday", "history48hrs");
+            Coin.PopulateData(data, chainData.history24hrs, chainData, "yesterday", "history48hrs", "history7day", "history14day");
         }
         
         times.timeNow = performance.now() / 1000;
     }
 
-    private static PopulateData(data: Data, period: PeriodData, chainData: ChainData, when: string, before: string) {
+    private static PopulateData(data: Data, period: PeriodData, chainData: ChainData, when: string, before24hrs: string, current7day: string, before7day: string) {
         let sample: Sample;
         sample = data.holders.sample;
         Coin.updateMeasure(sample[when], Big(period.holders));
@@ -418,11 +454,17 @@ class Coin {
         sample = data.tokenPriceUSDT.sample;
         Coin.updateMeasure(sample[when], tokenPriceStable);
 
-        let volume24hr = rewards.minus(chainData[before].rewards);
+        let volume24hr = rewards.minus(chainData[before24hrs].rewards);
         sample = data.rewardsToken24hr.sample;
         Coin.updateMeasure(sample[when], volume24hr);
         sample = data.rewardsUSDT24hr.sample;
         Coin.updateMeasure(sample[when], volume24hr.mul(tokenPriceStable));
+
+        let volume7day = Big(chainData[current7day].rewards).minus(Big(chainData[before7day].rewards));
+        sample = data.rewardsToken7day.sample;
+        Coin.updateMeasure(sample[when], volume7day);
+        sample = data.rewardsUSDT7day.sample;
+        Coin.updateMeasure(sample[when], volume7day.mul(tokenPriceStable));
 
         const volumeTransfers = Big(period.volumeTransfers);
         sample = data.volumeTransfers.sample;
@@ -430,7 +472,7 @@ class Coin {
         sample = data.volumeTransfersUSDT.sample;
         Coin.updateMeasure(sample[when], volumeTransfers.mul(tokenPriceStable));
 
-        volume24hr = volumeTransfers.minus(chainData[before].volumeTransfers);
+        volume24hr = volumeTransfers.minus(chainData[before24hrs].volumeTransfers);
         sample = data.volumeTransfers24hr.sample;
         Coin.updateMeasure(sample[when], volume24hr);
         sample = data.volumeTransfersUSDT24hr.sample;
@@ -442,7 +484,7 @@ class Coin {
         sample = data.volumeBuyUSDT.sample;
         Coin.updateMeasure(sample[when], volumeBuy.mul(tokenPriceStable));
 
-        volume24hr = volumeBuy.minus(chainData[before].volumeBuy);
+        volume24hr = volumeBuy.minus(chainData[before24hrs].volumeBuy);
         sample = data.volumeBuy24hr.sample;
         Coin.updateMeasure(sample[when], volume24hr);
         sample = data.volumeBuyUSDT24hr.sample;
@@ -454,7 +496,7 @@ class Coin {
         sample = data.volumeSellUSDT.sample;
         Coin.updateMeasure(sample[when], volumeSell.mul(tokenPriceStable));
 
-        volume24hr = volumeSell.minus(chainData[before].volumeSell);
+        volume24hr = volumeSell.minus(chainData[before24hrs].volumeSell);
         sample = data.volumeSell24hr.sample;
         Coin.updateMeasure(sample[when], volume24hr);
         sample = data.volumeSellUSDT24hr.sample;
@@ -466,7 +508,7 @@ class Coin {
         sample = data.volumeTradeUSDT.sample;
         Coin.updateMeasure(sample[when], volumeTrade.mul(tokenPriceStable));
 
-        volume24hr = volumeTrade.minus(chainData[before].volumeTrade);
+        volume24hr = volumeTrade.minus(chainData[before24hrs].volumeTrade);
         sample = data.volumeTrade24hr.sample;
         Coin.updateMeasure(sample[when], volume24hr);
         sample = data.volumeTradeUSDT24hr.sample;
