@@ -47,7 +47,7 @@ public class TwitterBot : IHostedService
 
         while (true)
         {
-            var delay = 600_000;
+            var delay = 300_000;
             try
             {
                 await GenerateTweets(sb);
@@ -65,41 +65,45 @@ public class TwitterBot : IHostedService
     private async Task GenerateTweets(StringBuilder sb)
     {
         var (price, change) = GetPriceChange(_stats.unified);
-        sb.AppendLine($"💵 ${price:0.0000000} Δ {FormatChange(change)} {ChangeIcon(change)}");
+        sb.AppendLine($"#EverRise $RISE");
+        sb.AppendLine();
+        sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)}");
+        change = GetChange(_stats.unified.history24hrs?.marketCapValue ?? 0, _stats.unified.current.marketCapValue);
+        sb.AppendLine($"${FormatNumber(_stats.unified.current.marketCapValue)} Market Cap {FormatChange(change)}");
+
+        change = GetChange(_stats.unified.history24hrs?.holdersValue ?? 0, _stats.unified.current.holdersValue);
+        sb.AppendLine($"{_stats.unified.current.holders:N0} Hodlrs {FormatChange(change)}");
+
         sb.AppendLine();
 
         (price, change) = GetPriceChange(_stats.eth);
-        sb.AppendLine($"${price:0.0000000} (Eth) Δ {FormatChange(change)} {ChangeIcon(change)}");
+        sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Eth");
 
         (price, change) = GetPriceChange(_stats.bsc);
-        sb.AppendLine($"${price:0.0000000} (BSC) Δ {FormatChange(change)} {ChangeIcon(change)}");
+        sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #BNB");
 
         (price, change) = GetPriceChange(_stats.poly);
-        sb.AppendLine($"${price:0.0000000} (Poly) Δ {FormatChange(change)} {ChangeIcon(change)}");
+        sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Polygon");
 
         (price, change) = GetPriceChange(_stats.ftm);
-        sb.AppendLine($"${price:0.0000000} (Ftm) Δ {FormatChange(change)} {ChangeIcon(change)}");
+        sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Ftm");
 
         (price, change) = GetPriceChange(_stats.avax);
-        sb.AppendLine($"${price:0.0000000} (Avax) Δ {FormatChange(change)} {ChangeIcon(change)}");
+        sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Avax");
 
         sb.AppendLine();
-        change = GetChange(_stats.unified.history24hrs.marketCapValue, _stats.unified.current.marketCapValue);
-        sb.AppendLine($"💰 ${FormatNumber(_stats.unified.current.marketCapValue)} MC {FormatChange(change)}");
 
-        change = GetChange(_stats.unified.history24hrs.holdersValue, _stats.unified.current.holdersValue);
-        sb.AppendLine($"🤝 {_stats.unified.current.holders:N0} Hodlrs {FormatChange(change)}");
-
-        sb.AppendLine();
-        change = GetChange(_stats.unified.history24hrs.usdStakedValue, _stats.unified.current.usdStakedValue);
-        sb.AppendLine($"🔐 ${FormatNumber(_stats.unified.current.usdStakedValue)} Staked TVL");// {FormatChange(change)}");
+        //change = GetChange(_stats.unified.history24hrs?.burnPercentValue ?? 0, _stats.unified.current.burnPercentValue);
+        sb.AppendLine($"{FormatPercent(_stats.unified.current.burnPercentValue)} Burn"); //{FormatChange(change)}");
+        change = GetChange(_stats.unified.history24hrs?.usdStakedValue ?? 0, _stats.unified.current.usdStakedValue);
+        sb.AppendLine($"${FormatNumber(_stats.unified.current.usdStakedValue)} Staked TVL");// {FormatChange(change)}");
         sb.AppendLine();
         change = GetPercent(_stats.unified.current.usdLiquidityCoinValue, _stats.unified.current.marketCapValue);
-        sb.AppendLine($"💧 ${FormatNumber(_stats.unified.current.usdLiquidityCoinValue * 2)} LP");
+        sb.AppendLine($"${FormatNumber(_stats.unified.current.usdLiquidityCoinValue * 2)} LP");
         change = GetPercent(_stats.unified.current.usdReservesBalanceValue, _stats.unified.current.marketCapValue);
-        sb.AppendLine($"🐳 ${FormatNumber(_stats.unified.current.usdReservesBalanceValue)} Buyback");
-        sb.AppendLine();
-        sb.Append("#EverRise");
+        sb.Append($"${FormatNumber(_stats.unified.current.usdReservesBalanceValue)} Reserves");
+        //sb.AppendLine();
+        //sb.Append("#BinanceSmartChain #BSC");
 
         var tweet = sb.ToString();
         sb.Clear();
@@ -124,6 +128,8 @@ public class TwitterBot : IHostedService
             svg.Picture.ToImage(bitmapSteam, SKColors.Empty, SKEncodedImageFormat.Png, 100, 1f, 1f, SKColorType.Rgb888x, SKAlphaType.Premul, SKSvgSettings.s_srgb);
             imageData = bitmapSteam.ToArray();
         }
+
+        //imageData = File.ReadAllBytes(@"C:\Users\thund\OneDrive\Pictures\coin\binance.jpg");
 
         if (imageData != null)
         {
@@ -285,7 +291,7 @@ public class TwitterBot : IHostedService
 
             }
 
-            sb.Append(@$"<image class=""graph-icon-rise"" x=""{x - 8:0.00}"" y=""8"" href=""https://data.everrise.com/icons/smartchain/0x0cd022dde27169b20895e0e2b2b8a33b25e63579.png"" height=""16"" width=""16""/>");
+            sb.Append(@$"<image class=""graph-icon-rise"" x=""{x - 8:0.00}"" y=""8"" href=""https://data.everrise.com/icons/smartchain/0xc17c30e98541188614df99239cabd40280810ca3.png"" height=""16"" width=""16""/>");
 
         }
 
@@ -297,13 +303,18 @@ public class TwitterBot : IHostedService
 
     private static (decimal price, decimal change) GetPriceChange(BlockchainStats chain)
     {
-        return (chain.current.tokenPriceStableValue, (chain.current.tokenPriceStableValue - chain.history24hrs.tokenPriceStableValue) / chain.history24hrs.tokenPriceStableValue);
+        if (chain.history24hrs is not null && chain.history24hrs.tokenPriceStableValue != 0)
+        {
+            return (chain.current.tokenPriceStableValue, (chain.current.tokenPriceStableValue - chain.history24hrs.tokenPriceStableValue) / chain.history24hrs.tokenPriceStableValue);
+        }
+
+        return (chain.current.tokenPriceStableValue, 0);
     }
 
     static string FormatPercent(decimal change)
     {
         if (change == decimal.MaxValue) return "♾️%";
-        return $"{change:P1}";
+        return $"{change:P3}";
     }
     static string FormatChange(decimal change)
     {

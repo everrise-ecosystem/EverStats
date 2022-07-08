@@ -4,14 +4,12 @@ using EverStats.Services;
 using EverStats.Config;
 
 var builder = WebApplication.CreateBuilder(args);
-
 // Add services to the container.
 var config = ApiConfig.GetConfiguration();
-var stats = new Stats(config);
 builder.Services
     .AddSingleton<ApiConfig>(config)
-    .AddSingleton<Stats>(stats)
-    .AddHostedService(provider => stats)
+    .AddSingleton<Stats>()
+    .AddHostedService(provider => provider.GetRequiredService<Stats>())
     .AddHostedService<TwitterBot>()
     ;
 

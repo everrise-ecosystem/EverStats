@@ -49,7 +49,7 @@ public partial class PricingMiddleware
         var key = $"{chain}:{blockNumber:0}";
         if (!_prices.TryGetValue(key, out var price))
         {
-            price = await _stats.QueryConinPrice(chain, blockNumber);
+            price = await _stats.QueryCoinPrice(chain, blockNumber);
             if (price != 0)
             {
                 _prices[key] = price;

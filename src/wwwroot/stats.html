@@ -1,4 +1,4 @@
-<html>
+﻿<html>
 <head>
     <style>
         /* Box sizing rules */
@@ -71,28 +71,55 @@
         }
 
         .section {
-            margin-bottom: 16px;
+            border-top: 1px solid rgba(255,255,255,0.25);
         }
 
         .chain {
             width: 420px;
         }
 
-        .chain div {
+            .chain div {
+                display: grid;
+                grid-template-columns: 160px 1fr 64px;
+                grid-column-gap: 6px;
+                padding: 4px;
+                height: 30px;
+            }
+        .chain-titles {
+            width: 160px;
+        }
+        .chain-titles div {
             display: grid;
-            grid-template-columns: 175px 1fr 64px;
+            grid-template-columns: 160px;
+            grid-column-gap: 6px;
+            padding: 4px;
+            height: 30px;
+        }
+        .chain-data {
+            width: 240px;
+        }
+        .chain-data div {
+            display: grid;
+            grid-template-columns: 1fr 64px;
             grid-column-gap: 6px;
             padding: 4px;
             height: 30px;
         }
 
-        .chain div:nth-child(odd) {
-            background: rgba(0,0,0,0.125);
-        }
+            .chain div:nth-child(odd),
+            .chain-data div:nth-child(odd),
+            .chain-titles div:nth-child(odd)
+            {
+                background: rgba(0,0,0,0.125);
+            }
 
-        .chain div span {
-            text-align: right;
-        }
+            .chain div span,
+            .chain-data div span {
+                text-align: right;
+                display: block;
+                width: 176px;
+                height: 22px;
+            }
 
         .chain div span:first-child {
             text-align: left;
@@ -100,7 +127,7 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: 160px repeat(5, 1fr);
             grid-column-gap: 0px;
             grid-row-gap: 0px;
         }
@@ -109,22 +136,26 @@
             grid-area: 1 / 2 / 2 / 3;
         }
 
-        .stats-bsc {
+        .stats-titles {
             grid-area: 2 / 1 / 3 / 2;
         }
-
-        .stats-eth {
+        .stats-bsc {
             grid-area: 2 / 2 / 3 / 3;
         }
 
-        .stats-poly {
+        .stats-eth {
             grid-area: 2 / 3 / 3 / 4;
         }
-        .stats-ftm {
+
+        .stats-poly {
             grid-area: 2 / 4 / 3 / 5;
         }
-        .stats-avax {
+        .stats-ftm {
             grid-area: 2 / 5 / 3 / 6;
+        }
+
+        .stats-avax {
+            grid-area: 2 / 6 / 3 / 7;
         }
 
         .ticker {
@@ -187,8 +218,9 @@
             color: white;
             border-color: rgb(127,127,127);
             background-color: rgb(75,75,75);
-            height: 24px;
+            height: 24px !important;
             font-size: 12px;
+            width: 62px !important;
         }
 
             .ticker-24r-change.down, .ticker-24r-change.reversed.up {
@@ -215,11 +247,11 @@
                 line-height: 0.25;
             }
 
-            .stats-logo-everrise{
-                background-image: url('https://data.everrise.com/icons/smartchain/0x0cd022dde27169b20895e0e2b2b8a33b25e63579.png');
-                background-size: 48px;
-                background-repeat: no-repeat;
-            }
+        .stats-logo-everrise {
+            background-image: url('https://data.everrise.com/icons/smartchain/0xc17c30e98541188614df99239cabd40280810ca3.png');
+            background-size: 48px;
+            background-repeat: no-repeat;
+        }
             .graph-text-percent, .graph-text-price{
                 font-family: 'Lato';
                 stroke: none;
@@ -232,6 +264,31 @@
                 fill: silver;
                 font-size: 9px;
             }
+        h3 {
+            position: relative;
+            padding-right: 40px;
+            text-align: right;
+        }
+                h3 img {
+                    position: absolute;
+                    width: 32px;
+                    height: 32px;
+                    right: 0;
+                    top: -8px;
+                }
+                .left{ text-align: left }
+        h3 {
+            position: relative;
+            padding-left: 40px;
+            text-align: right;
+        }
+        h3.left img {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            left: 0;
+            top: -8px;
+        }
     </style>
 </head>
 <body>
@@ -254,7 +311,7 @@
             <image class="graph-icon-poly" href="https://data.everrise.com/icons/networks/polygon.svg" height="16" width="16" />
             <image class="graph-icon-ftm" href="https://data.everrise.com/icons/networks/fantom.svg" height="16" width="16" />
             <image class="graph-icon-avax" href="https://data.everrise.com/icons/networks/avalanche.svg" height="16" width="16" />
-            <image class="graph-icon-rise" href="https://data.everrise.com/icons/smartchain/0x0cd022dde27169b20895e0e2b2b8a33b25e63579.png" height="16" width="16" />
+            <image class="graph-icon-rise" href="https://data.everrise.com/icons/smartchain/0xc17c30e98541188614df99239cabd40280810ca3.png" height="16" width="16" />
             </svg>
             <div>
                 <span>Holders </span>
@@ -262,34 +319,49 @@
                 <span class="ticker ticker-all-holders-change ticker-24r-change ticker-percentage"></span>
             </div>
             <div>
-                <span>Total Supply </span>
+                <span>Max Supply </span>
                 <span class="ticker ticker-rise ticker-all-supply">71,618,033,988</span>
-                <span class="ticker ticker-all-supply-change ticker-24r-change ticker-percentage">0.00</span>
+                <span class="ticker ticker-all-supply-change ticker-24r-change ticker-percentage">±0.00</span>
+            </div>
+            <div>
+                <span>Burn</span>
+                <span class="ticker ticker-rise ticker-all-burn">0</span>
+                <span class="ticker ticker-all-burn-change ticker-24r-change ticker-percentage">±0.00</span>
+            </div>
+            <div>
+                <span>Total Supply </span>
+                <span class="ticker ticker-rise ticker-all-totalSupply">71,618,033,988</span>
+                <span class="ticker ticker-all-totalSupply-change ticker-24r-change ticker-percentage">±0.00</span>
             </div>
             <div>
                 <span>Market Cap </span>
                 <span class="ticker ticker-usdt ticker-all-market-cap"></span>
                 <span class="ticker ticker-all-market-cap-change ticker-24r-change ticker-percentage"></span>
             </div>
+            <div class="section">
+                <span>dApp EverSwap Vol</span>
+                <span class="ticker ticker-usdt ticker-all-everswap-usdt"></span>
+                <!--<span class="ticker ticker-all-everswap-percent-change ticker-24r-change ticker-percentage"></span>-->
+            </div>
             <div>
                 <span>Liquidity of MC</span>
                 <span class="ticker ticker-percentage ticker-all-liquidity-percent"></span>
                 <span class="ticker ticker-all-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
             </div>
-            <div>
-                <span>Buyback Reserves of MC</span>
+            <div class="section">
+                <span>Reserves of MC </span>
                 <span class="ticker ticker-percentage ticker-all-coin-reserves-percent"></span>
                 <span class="ticker ticker-all-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
             </div>
             <div>
+                <span>Total Reserves </span>
+                <span class="ticker ticker-usdt ticker-all-reserves-usdt"></span>
+                <span class="ticker ticker-all-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
+            </div>
+            <div class="section">
                 <span>Staked of Total Supply </span>
                 <span class="ticker ticker-percentage ticker-all-staked-percent"></span>
-                <span class="ticker ticker-all-staked-percent-change ticker-24r-change ticker-percentage"></span>
-            </div>
-            <div>
-                <span>Buyback Reserves </span>
-                <span class="ticker ticker-usdt ticker-all-coin-reserves-usdt"></span>
-                <span class="ticker ticker-all-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
+                <!--<span class="ticker ticker-all-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
             </div>
         </div>
     </div>
@@ -299,22 +371,22 @@
             <h3>RISE</h3>
 
             <div>
+                <span>Staked </span>
+                <span class="ticker ticker-rise ticker-all-staked-token"></span>
+                <!--<span class="ticker ticker-all-staked-token-change ticker-24r-change ticker-percentage"></span>-->
+            </div>
+            <div>
                 <span>Liquidity RISE </span>
                 <span class="ticker reversed ticker-rise ticker-all-token-liquidity"></span>
                 <span class="ticker reversed ticker-all-token-liquidity-change ticker-24r-change ticker-percentage"></span>
             </div>
             <div>
-                <span>Staked </span>
-                <span class="ticker ticker-rise ticker-all-staked-token"></span>
-                <span class="ticker ticker-all-staked-token-change ticker-24r-change ticker-percentage"></span>
+                <span>Token Reserves </span>
+                <span class="ticker ticker-rise ticker-all-token-reserves"></span>
+                <span class="ticker ticker-all-token-reserves-change ticker-24r-change ticker-percentage"></span>
             </div>
 
-            <div>
-                <span>24hr Transfers </span>
-                <span class="ticker ticker-rise ticker-all-vol-txns-24hr"></span>
-                <span class="ticker ticker-all-vol-txns-24hr-change ticker-24r-change ticker-percentage"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>24hr Buy </span>
                 <span class="ticker ticker-rise ticker-all-vol-buy-24hr"></span>
                 <span class="ticker ticker-all-vol-buy-24hr-change ticker-24r-change ticker-percentage"></span>
@@ -335,11 +407,7 @@
                 <span class="ticker ticker-all-rewards-token-24hr-change ticker-24r-change ticker-percentage"></span>
             </div>
 
-            <div>
-                <span>7 day Transfers </span>
-                <span class="ticker ticker-rise ticker-all-vol-txns-7day"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>7 day Buy </span>
                 <span class="ticker ticker-rise ticker-all-vol-buy-7day"></span>
             </div>
@@ -356,11 +424,7 @@
                 <span class="ticker ticker-rise ticker-all-rewards-token-7day"></span>
             </div>
 
-            <div>
-                <span>14 day Transfers </span>
-                <span class="ticker ticker-rise ticker-all-vol-txns-14day"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>14 day Buy </span>
                 <span class="ticker ticker-rise ticker-all-vol-buy-14day"></span>
             </div>
@@ -377,11 +441,7 @@
                 <span class="ticker ticker-rise ticker-all-rewards-token-14day"></span>
             </div>
 
-            <div>
-                <span>Total Transfers </span>
-                <span class="ticker ticker-rise ticker-all-vol-txns"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>Total Buy </span>
                 <span class="ticker ticker-rise ticker-all-vol-buy"></span>
             </div>
@@ -403,22 +463,22 @@
             <h3>USDT Equivalent</h3>
 
             <div>
+                <span>Staked </span>
+                <span class="ticker ticker-usdt ticker-all-staked-usdt"></span>
+                <!--<span class="ticker ticker-all-staked-usdt-change ticker-24r-change ticker-percentage"></span>-->
+            </div>
+            <div>
                 <span>Liquidity Coins</span>
                 <span class="ticker ticker-usdt ticker-all-coin-liquidity-usdt"></span>
                 <span class="ticker ticker-all-coin-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
             </div>
             <div>
-                <span>Staked </span>
-                <span class="ticker ticker-usdt ticker-all-staked-usdt"></span>
-                <span class="ticker ticker-all-staked-usdt-change ticker-24r-change ticker-percentage"></span>
+                <span>Coin Reserves </span>
+                <span class="ticker ticker-usdt ticker-all-coin-reserves-usdt"></span>
+                <span class="ticker ticker-all-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
             </div>
 
-            <div>
-                <span>24hr Transfers </span>
-                <span class="ticker ticker-usdt ticker-all-vol-txns-usdt-24hr"></span>
-                <span class="ticker ticker-all-vol-txns-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>24hr Buy </span>
                 <span class="ticker ticker-usdt ticker-all-vol-buy-usdt-24hr"></span>
                 <span class="ticker ticker-all-vol-buy-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
@@ -439,12 +499,7 @@
                 <span class="ticker ticker-all-rewards-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
             </div>
 
-
-            <div>
-                <span>7 Day Transfers </span>
-                <span class="ticker ticker-usdt ticker-all-vol-txns-usdt-7Day"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>7 Day Buy </span>
                 <span class="ticker ticker-usdt ticker-all-vol-buy-usdt-7Day"></span>
             </div>
@@ -461,11 +516,7 @@
                 <span class="ticker ticker-usdt ticker-all-rewards-usdt-7Day"></span>
             </div>
 
-            <div>
-                <span>14 Day Transfers </span>
-                <span class="ticker ticker-usdt ticker-all-vol-txns-usdt-14Day"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>14 Day Buy </span>
                 <span class="ticker ticker-usdt ticker-all-vol-buy-usdt-14Day"></span>
             </div>
@@ -482,11 +533,7 @@
                 <span class="ticker ticker-usdt ticker-all-rewards-usdt-14Day"></span>
             </div>
 
-            <div>
-                <span>Total Transfers </span>
-                <span class="ticker ticker-usdt ticker-all-vol-txns-usdt"></span>
-            </div>
-            <div>
+            <div class="section">
                 <span>Total Buy </span>
                 <span class="ticker ticker-usdt ticker-all-vol-buy-usdt"></span>
             </div>
@@ -504,1704 +551,1518 @@
             </div>
         </div>
     </div>
-
     <div class="stats-container">
         <div>
             <div class="stats">
-
-                <div class="chain stats-bsc">
-                    <h3>EverRise BSC</h3>
+                <div class="chain-titles stats-titles">
+                    <h3 class="left">EverRise <img src="https://data.everrise.com/icons/smartchain/0xc17c30e98541188614df99239cabd40280810ca3.png" /></h3>
+                    <div class="section">
+                        <span>RISE Price </span>
+                    </div>
+                    <div>
+                        <span>Coin Price </span>
+                    </div>
+                    <div>
+                        <span>Market Cap </span>
+                    </div>
+                    <div>
+                        <span>dApp EverSwap Vol</span>
+                    </div>
                     <div>
                         <span>RISE Price </span>
+                    </div>
+                    <div>
+                        <span>Holders </span>
+                    </div>
+
+                    <div class="section">
+                        <span>Liquidity Coin of MC</span>
+                    </div>
+                    <div>
+                        <span>Reserves of MC </span>
+                    </div>
+                    <div>
+                        <span>Staked of Total Supply </span>
+                    </div>
+                    <div>
+                        <span>Staked of On-Chain </span>
+                    </div>
+                    <div>
+                        <span>Staked </span>
+                    </div>
+                    <div>
+                        <span>Avg Stake Multiplier </span>
+                    </div>
+
+                    <div>
+                        <span>Supply On-Chain </span>
+                    </div>
+                    <div>
+                        <span>Liquidity RISE </span>
+                    </div>
+                    <div>
+                        <span>Liquidity Coin </span>
+                    </div>
+                    <div class="section">
+                        <span>Coin Reserves </span>
+                    </div>
+                    <div>
+                        <span>Token Reserves </span>
+                    </div>
+
+                    <div class="section">
+                        <span>24hr Buy </span>
+                    </div>
+                    <div>
+                        <span>24hr Sell </span>
+                    </div>
+                    <div>
+                        <span>24hr Trade </span>
+                    </div>
+                    <div>
+                        <span>24hr Rewards </span>
+                    </div>
+
+                    <div class="section">
+                        <span>7 day Buy </span>
+                    </div>
+                    <div>
+                        <span>7 day Sell </span>
+                    </div>
+                    <div>
+                        <span>7 day Trade </span>
+                    </div>
+                    <div>
+                        <span>7 day Rewards </span>
+                    </div>
+
+                    <div class="section">
+                        <span>14 day Buy </span>
+                    </div>
+                    <div>
+                        <span>14 day Sell </span>
+                    </div>
+                    <div>
+                        <span>14 day Trade </span>
+                    </div>
+                    <div>
+                        <span>14 day Rewards </span>
+                    </div>
+
+                    <div class="section">
+                        <span>Total Buy </span>
+                    </div>
+                    <div>
+                        <span>Total Sell </span>
+                    </div>
+                    <div>
+                        <span>Total Trade </span>
+                    </div>
+                    <div>
+                        <span>Total Rewards </span>
+                    </div>
+                </div>
+
+                <div class="chain-data stats-bsc">
+                    <h3>BNB <img src="https://data.everrise.com/icons/networks/smartchain.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-token-price-usdt"></span>
                         <span class="ticker ticker-bsc-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>BNB Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-bsc-coin-price-usdt"></span>
                         <span class="ticker ticker-bsc-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-bsc-market-cap"></span>
                         <span class="ticker ticker-bsc-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-bnb ticker-bsc-everswap"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-bnb ticker-bsc-token-price-coin"></span>
                         <span class="ticker ticker-bsc-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-bsc-holders"></span>
                         <span class="ticker ticker-bsc-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Liquidity BNB of MC</span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-bsc-liquidity-percent"></span>
                         <span class="ticker ticker-bsc-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC</span>
                         <span class="ticker ticker-percentage ticker-bsc-coin-reserves-percent"></span>
                         <span class="ticker ticker-bsc-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-bsc-staked-percent"></span>
-                        <span class="ticker ticker-bsc-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-bsc-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply On-Chain </span>
+                        <span class="ticker ticker-percentage ticker-bsc-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-bsc-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-rise ticker-bsc-staked-token"></span>
+                        <!--<span class="ticker ticker-bsc-staked-token-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-bsc-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-bsc-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-bsc-supply-percent"></span>
                         <span class="ticker ticker-bsc-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-bsc-staked-onchain-percent"></span>
-                        <span class="ticker ticker-bsc-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-rise ticker-bsc-staked-token"></span>
-                        <span class="ticker ticker-bsc-staked-token-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Ave Stake Multiplier </span>
-                        <span class="ticker ticker-multiplier ticker-bsc-staked-multiplier"></span>
-                        <span class="ticker ticker-bsc-staked-multiplier-change ticker-24r-change ticker-percentage"></span>
-                    </div>
 
                     <div>
-                        <span>Liquidity RISE </span>
                         <span class="ticker reversed ticker-rise ticker-bsc-token-liquidity"></span>
                         <span class="ticker reversed ticker-bsc-token-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Liquidity BNB </span>
                         <span class="ticker ticker-bnb ticker-bsc-coin-liquidity"></span>
                         <span class="ticker ticker-bsc-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-bnb ticker-bsc-coin-reserves"></span>
                         <span class="ticker ticker-bsc-coin-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-rise ticker-bsc-vol-txns-24hr"></span>
-                        <span class="ticker ticker-bsc-vol-txns-24hr-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-rise ticker-bsc-token-reserves"></span>
+                        <span class="ticker ticker-bsc-token-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-bsc-vol-buy-24hr"></span>
                         <span class="ticker ticker-bsc-vol-buy-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-sell-24hr"></span>
                         <span class="ticker ticker-bsc-vol-sell-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-trade-24hr"></span>
                         <span class="ticker ticker-bsc-vol-trade-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-rise ticker-bsc-rewards-token-24hr"></span>
                         <span class="ticker ticker-bsc-rewards-token-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-bsc-vol-txns-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-bsc-vol-buy-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-sell-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-trade-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-rise ticker-bsc-rewards-token-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-bsc-vol-txns-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-bsc-vol-buy-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-sell-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-trade-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-rise ticker-bsc-rewards-token-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-rise ticker-bsc-vol-txns"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-bsc-vol-buy"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-sell"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-rise ticker-bsc-vol-trade"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-rise ticker-bsc-rewards-token"></span>
                     </div>
                 </div>
 
-                <div class="chain stats-eth">
-                    <h3>EverRise ETH</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-eth">
+                    <h3>ETH <img src="https://data.everrise.com/icons/networks/ethereum.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-token-price-usdt"></span>
                         <span class="ticker ticker-eth-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>ETH Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-eth-coin-price-usdt"></span>
                         <span class="ticker ticker-eth-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-eth-market-cap"></span>
                         <span class="ticker ticker-eth-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-eth ticker-eth-everswap"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-eth ticker-eth-token-price-coin"></span>
                         <span class="ticker ticker-eth-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-eth-holders"></span>
                         <span class="ticker ticker-eth-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity ETH of MC </span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-eth-liquidity-percent"></span>
                         <span class="ticker ticker-eth-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC </span>
                         <span class="ticker ticker-percentage ticker-eth-coin-reserves-percent"></span>
                         <span class="ticker ticker-eth-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-eth-staked-percent"></span>
-                        <span class="ticker ticker-eth-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-eth-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply On-Chain </span>
+                        <span class="ticker ticker-percentage ticker-eth-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-eth-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-rise ticker-eth-staked-token"></span>
+                        <!--<span class="ticker ticker-eth-staked-token-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-eth-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-eth-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-eth-supply-percent"></span>
                         <span class="ticker ticker-eth-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-eth-staked-onchain-percent"></span>
-                        <span class="ticker ticker-eth-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-rise ticker-eth-staked-token"></span>
-                        <span class="ticker ticker-eth-staked-token-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Ave Stake Multiplier </span>
-                        <span class="ticker ticker-multiplier ticker-eth-staked-multiplier"></span>
-                        <span class="ticker ticker-eth-staked-multiplier-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Liquidity RISE </span>
                         <span class="ticker reversed ticker-rise ticker-eth-token-liquidity"></span>
                         <span class="ticker reversed ticker-eth-token-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Liquidity ETH</span>
                         <span class="ticker ticker-eth ticker-eth-coin-liquidity"></span>
                         <span class="ticker ticker-eth-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Buyback Reserves</span>
+                    <div class="section">
                         <span class="ticker ticker-eth ticker-eth-coin-reserves"></span>
                         <span class="ticker ticker-eth-coin-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-rise ticker-eth-vol-txns-24hr"></span>
-                        <span class="ticker ticker-eth-vol-txns-24hr-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-rise ticker-eth-token-reserves"></span>
+                        <span class="ticker ticker-eth-token-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-eth-vol-buy-24hr"></span>
                         <span class="ticker ticker-eth-vol-buy-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-rise ticker-eth-vol-sell-24hr"></span>
                         <span class="ticker ticker-eth-vol-sell-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-rise ticker-eth-vol-trade-24hr"></span>
                         <span class="ticker ticker-eth-vol-trade-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-rise ticker-eth-rewards-token-24hr"></span>
                         <span class="ticker ticker-eth-rewards-token-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-eth-vol-txns-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-eth-vol-buy-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-rise ticker-eth-vol-sell-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-rise ticker-eth-vol-trade-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-rise ticker-eth-rewards-token-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-eth-vol-txns-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-eth-vol-buy-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-rise ticker-eth-vol-sell-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-rise ticker-eth-vol-trade-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-rise ticker-eth-rewards-token-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-rise ticker-eth-vol-txns"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-eth-vol-buy"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-rise ticker-eth-vol-sell"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-rise ticker-eth-vol-trade"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-rise ticker-eth-rewards-token"></span>
                     </div>
                 </div>
 
-                <div class="chain stats-poly">
-                    <h3>EverRise Polygon</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-poly">
+                    <h3>Polygon <img src="https://data.everrise.com/icons/networks/polygon.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-token-price-usdt"></span>
                         <span class="ticker ticker-poly-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>MATIC Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-poly-coin-price-usdt"></span>
                         <span class="ticker ticker-poly-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-poly-market-cap"></span>
                         <span class="ticker ticker-poly-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-matic ticker-poly-everswap"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-matic ticker-poly-token-price-coin"></span>
                         <span class="ticker ticker-poly-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-poly-holders"></span>
                         <span class="ticker ticker-poly-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Liquidity MATIC of MC</span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-poly-liquidity-percent"></span>
                         <span class="ticker ticker-poly-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Buyback Reserves of MC</span>
                         <span class="ticker ticker-percentage ticker-poly-coin-reserves-percent"></span>
                         <span class="ticker ticker-poly-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-poly-staked-percent"></span>
-                        <span class="ticker ticker-poly-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-poly-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply On-Chain </span>
+                        <span class="ticker ticker-percentage ticker-poly-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-poly-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-rise ticker-poly-staked-token"></span>
+                        <!--<span class="ticker ticker-poly-staked-token-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-poly-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-poly-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-poly-supply-percent"></span>
                         <span class="ticker ticker-poly-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-poly-staked-onchain-percent"></span>
-                        <span class="ticker ticker-poly-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-rise ticker-poly-staked-token"></span>
-                        <span class="ticker ticker-poly-staked-token-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Ave Stake Multiplier </span>
-                        <span class="ticker ticker-multiplier ticker-poly-staked-multiplier"></span>
-                        <span class="ticker ticker-poly-staked-multiplier-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Liquidity RISE</span>
                         <span class="ticker reversed ticker-rise ticker-poly-token-liquidity"></span>
                         <span class="ticker reversed ticker-poly-token-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Liquidity MATIC </span>
                         <span class="ticker ticker-matic ticker-poly-coin-liquidity"></span>
                         <span class="ticker ticker-poly-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-matic ticker-poly-coin-reserves"></span>
                         <span class="ticker ticker-poly-coin-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-rise ticker-poly-vol-txns-24hr"></span>
-                        <span class="ticker ticker-poly-vol-txns-24hr-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-rise ticker-poly-token-reserves"></span>
+                        <span class="ticker ticker-poly-token-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-poly-vol-buy-24hr"></span>
                         <span class="ticker ticker-poly-vol-buy-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-rise ticker-poly-vol-sell-24hr"></span>
                         <span class="ticker ticker-poly-vol-sell-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-rise ticker-poly-vol-trade-24hr"></span>
                         <span class="ticker ticker-poly-vol-trade-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-rise ticker-poly-rewards-token-24hr"></span>
                         <span class="ticker ticker-poly-rewards-token-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-poly-vol-txns-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-poly-vol-buy-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-rise ticker-poly-vol-sell-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-rise ticker-poly-vol-trade-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-rise ticker-poly-rewards-token-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-poly-vol-txns-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-poly-vol-buy-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-rise ticker-poly-vol-sell-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-rise ticker-poly-vol-trade-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-rise ticker-poly-rewards-token-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-rise ticker-poly-vol-txns"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-poly-vol-buy"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-rise ticker-poly-vol-sell"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-rise ticker-poly-vol-trade"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-rise ticker-poly-rewards-token"></span>
                     </div>
                 </div>
 
-                <div class="chain stats-ftm">
-                    <h3>EverRise Fantom</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-ftm">
+                    <h3>Fantom <img src="https://data.everrise.com/icons/networks/fantom.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-token-price-usdt"></span>
                         <span class="ticker ticker-ftm-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>FTM Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-ftm-coin-price-usdt"></span>
                         <span class="ticker ticker-ftm-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-ftm-market-cap"></span>
                         <span class="ticker ticker-ftm-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-ftm ticker-ftm-everswap"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-ftm ticker-ftm-token-price-coin"></span>
                         <span class="ticker ticker-ftm-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-ftm-holders"></span>
                         <span class="ticker ticker-ftm-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Liquidity FTM of MC</span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-ftm-liquidity-percent"></span>
                         <span class="ticker ticker-ftm-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Buyback Reserves of MC</span>
                         <span class="ticker ticker-percentage ticker-ftm-coin-reserves-percent"></span>
                         <span class="ticker ticker-ftm-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-ftm-staked-percent"></span>
-                        <span class="ticker ticker-ftm-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-ftm-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply On-Chain </span>
+                        <span class="ticker ticker-percentage ticker-ftm-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-ftm-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-rise ticker-ftm-staked-token"></span>
+                        <!--<span class="ticker ticker-ftm-staked-token-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-ftm-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-ftm-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-ftm-supply-percent"></span>
                         <span class="ticker ticker-ftm-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-ftm-staked-onchain-percent"></span>
-                        <span class="ticker ticker-ftm-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-rise ticker-ftm-staked-token"></span>
-                        <span class="ticker ticker-ftm-staked-token-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Ave Stake Multiplier </span>
-                        <span class="ticker ticker-multiplier ticker-ftm-staked-multiplier"></span>
-                        <span class="ticker ticker-ftm-staked-multiplier-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Liquidity RISE</span>
                         <span class="ticker reversed ticker-rise ticker-ftm-token-liquidity"></span>
                         <span class="ticker reversed ticker-ftm-token-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Liquidity FTM </span>
                         <span class="ticker ticker-ftm ticker-ftm-coin-liquidity"></span>
                         <span class="ticker ticker-ftm-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-ftm ticker-ftm-coin-reserves"></span>
                         <span class="ticker ticker-ftm-coin-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-
                     <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-rise ticker-ftm-vol-txns-24hr"></span>
-                        <span class="ticker ticker-ftm-vol-txns-24hr-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-rise ticker-ftm-token-reserves"></span>
+                        <span class="ticker ticker-ftm-token-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-ftm-vol-buy-24hr"></span>
                         <span class="ticker ticker-ftm-vol-buy-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-sell-24hr"></span>
                         <span class="ticker ticker-ftm-vol-sell-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-trade-24hr"></span>
                         <span class="ticker ticker-ftm-vol-trade-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-rise ticker-ftm-rewards-token-24hr"></span>
                         <span class="ticker ticker-ftm-rewards-token-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-ftm-vol-txns-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-ftm-vol-buy-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-sell-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-trade-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-rise ticker-ftm-rewards-token-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-ftm-vol-txns-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-ftm-vol-buy-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-sell-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-trade-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-rise ticker-ftm-rewards-token-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-rise ticker-ftm-vol-txns"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-ftm-vol-buy"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-sell"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-rise ticker-ftm-vol-trade"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-rise ticker-ftm-rewards-token"></span>
                     </div>
                 </div>
 
-                <div class="chain stats-avax">
-                    <h3>EverRise Avalanche</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-avax">
+                    <h3>Avalanche <img src="https://data.everrise.com/icons/networks/avalanche.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-token-price-usdt"></span>
                         <span class="ticker ticker-avax-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>AVAX Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-avax-coin-price-usdt"></span>
                         <span class="ticker ticker-avax-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-avax-market-cap"></span>
                         <span class="ticker ticker-avax-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-avax ticker-avax-everswap"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-avax ticker-avax-token-price-coin"></span>
                         <span class="ticker ticker-avax-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-avax-holders"></span>
                         <span class="ticker ticker-avax-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Liquidity AVAX of MC</span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-avax-liquidity-percent"></span>
                         <span class="ticker ticker-avax-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Buyback Reserves of MC</span>
                         <span class="ticker ticker-percentage ticker-avax-coin-reserves-percent"></span>
                         <span class="ticker ticker-avax-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-avax-staked-percent"></span>
-                        <span class="ticker ticker-avax-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-avax-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply On-Chain </span>
+                        <span class="ticker ticker-percentage ticker-avax-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-avax-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-rise ticker-avax-staked-token"></span>
+                        <!--<span class="ticker ticker-avax-staked-token-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-avax-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-avax-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-avax-supply-percent"></span>
                         <span class="ticker ticker-avax-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-avax-staked-onchain-percent"></span>
-                        <span class="ticker ticker-avax-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-rise ticker-avax-staked-token"></span>
-                        <span class="ticker ticker-avax-staked-token-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Ave Stake Multiplier </span>
-                        <span class="ticker ticker-multiplier ticker-avax-staked-multiplier"></span>
-                        <span class="ticker ticker-avax-staked-multiplier-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Liquidity RISE</span>
                         <span class="ticker reversed ticker-rise ticker-avax-token-liquidity"></span>
                         <span class="ticker reversed ticker-avax-token-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Liquidity AVAX </span>
                         <span class="ticker ticker-avax ticker-avax-coin-liquidity"></span>
                         <span class="ticker ticker-avax-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-avax ticker-avax-coin-reserves"></span>
                         <span class="ticker ticker-avax-coin-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-
                     <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-rise ticker-avax-vol-txns-24hr"></span>
-                        <span class="ticker ticker-avax-vol-txns-24hr-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-rise ticker-avax-token-reserves"></span>
+                        <span class="ticker ticker-avax-token-reserves-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-avax-vol-buy-24hr"></span>
                         <span class="ticker ticker-avax-vol-buy-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-rise ticker-avax-vol-sell-24hr"></span>
                         <span class="ticker ticker-avax-vol-sell-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-rise ticker-avax-vol-trade-24hr"></span>
                         <span class="ticker ticker-avax-vol-trade-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-rise ticker-avax-rewards-token-24hr"></span>
                         <span class="ticker ticker-avax-rewards-token-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-avax-vol-txns-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-avax-vol-buy-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-rise ticker-avax-vol-sell-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-rise ticker-avax-vol-trade-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-rise ticker-avax-rewards-token-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-rise ticker-avax-vol-txns-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-avax-vol-buy-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-rise ticker-avax-vol-sell-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-rise ticker-avax-vol-trade-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-rise ticker-avax-rewards-token-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-rise ticker-avax-vol-txns"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-rise ticker-avax-vol-buy"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-rise ticker-avax-vol-sell"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-rise ticker-avax-vol-trade"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-rise ticker-avax-rewards-token"></span>
                     </div>
                 </div>
             </div>
         </div>
         <div>
-            <h2>USDT Equivalent</h2>
             <div class="stats">
-
-                <div class="chain stats-bsc">
-                    <h3>EverRise BSC</h3>
+                <div class="chain-titles stats-titles">
+                    <h3 class="left">EverRise <img src="https://data.everrise.com/icons/smartchain/0xc17c30e98541188614df99239cabd40280810ca3.png" /></h3>
+                    <div class="section">
+                        <span>RISE Price </span>
+                    </div>
+                    <div>
+                        <span>Coin Price </span>
+                    </div>
+                    <div>
+                        <span>Market Cap </span>
+                    </div>
+                    <div>
+                        <span>dApp EverSwap Vol</span>
+                    </div>
                     <div>
                         <span>RISE Price </span>
+                    </div>
+                    <div>
+                        <span>Holders </span>
+                    </div>
+
+                    <div class="section">
+                        <span>Liquidity Coin of MC</span>
+                    </div>
+                    <div>
+                        <span>Reserves of MC </span>
+                    </div>
+                    <div>
+                        <span>Staked of Total Supply </span>
+                    </div>
+                    <div>
+                        <span>Staked of On-Chain </span>
+                    </div>
+                    <div>
+                        <span>Staked </span>
+                    </div>
+                    <div>
+                        <span>Avg Stake Multiplier </span>
+                    </div>
+                    <div>
+                        <span>Supply On-Chain </span>
+                    </div>
+
+                    <div>
+                        <span>Liquidity RISE </span>
+                    </div>
+                    <div>
+                        <span>Liquidity Coin </span>
+                    </div>
+                    <div class="section">
+                        <span>Coin Reserves </span>
+                    </div>
+                    <div>
+                        <span>Token Reserves </span>
+                    </div>
+
+                    <div class="section">
+                        <span>24hr Buy </span>
+                    </div>
+                    <div>
+                        <span>24hr Sell </span>
+                    </div>
+                    <div>
+                        <span>24hr Trade </span>
+                    </div>
+                    <div>
+                        <span>24hr Rewards </span>
+                    </div>
+
+                    <div class="section">
+                        <span>7 day Buy </span>
+                    </div>
+                    <div>
+                        <span>7 day Sell </span>
+                    </div>
+                    <div>
+                        <span>7 day Trade </span>
+                    </div>
+                    <div>
+                        <span>7 day Rewards </span>
+                    </div>
+
+                    <div class="section">
+                        <span>14 day Buy </span>
+                    </div>
+                    <div>
+                        <span>14 day Sell </span>
+                    </div>
+                    <div>
+                        <span>14 day Trade </span>
+                    </div>
+                    <div>
+                        <span>14 day Rewards </span>
+                    </div>
+
+                    <div class="section">
+                        <span>Total Buy </span>
+                    </div>
+                    <div>
+                        <span>Total Sell </span>
+                    </div>
+                    <div>
+                        <span>Total Trade </span>
+                    </div>
+                    <div>
+                        <span>Total Rewards </span>
+                    </div>
+                </div>
+
+                <div class="chain-data stats-bsc">
+                    <h3>BNB <img src="https://data.everrise.com/icons/networks/smartchain.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-token-price-usdt"></span>
                         <span class="ticker ticker-bsc-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>BNB Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-bsc-coin-price-usdt"></span>
                         <span class="ticker ticker-bsc-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-bsc-market-cap"></span>
                         <span class="ticker ticker-bsc-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-usdt ticker-bsc-everswap-usdt"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-bnb ticker-bsc-token-price-coin"></span>
                         <span class="ticker ticker-bsc-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-bsc-holders"></span>
                         <span class="ticker ticker-bsc-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity BNB of MC</span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-bsc-liquidity-percent"></span>
                         <span class="ticker ticker-bsc-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC</span>
                         <span class="ticker ticker-percentage ticker-bsc-coin-reserves-percent"></span>
                         <span class="ticker ticker-bsc-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-bsc-staked-percent"></span>
-                        <span class="ticker ticker-bsc-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-bsc-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply on chain </span>
+                        <span class="ticker ticker-percentage ticker-bsc-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-bsc-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-usdt ticker-bsc-staked-usdt"></span>
+                        <!--<span class="ticker ticker-bsc-staked-usdt-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-bsc-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-bsc-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-bsc-supply-percent"></span>
                         <span class="ticker ticker-bsc-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
+
                     <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-bsc-staked-onchain-percent"></span>
-                        <span class="ticker ticker-bsc-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-bsc-token-liquidity-usdt"></span>
+                        <span class="ticker ticker-bsc-token-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Liquidity BNB </span>
                         <span class="ticker ticker-usdt ticker-bsc-coin-liquidity-usdt"></span>
                         <span class="ticker ticker-bsc-coin-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-coin-reserves-usdt"></span>
                         <span class="ticker ticker-bsc-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-usdt ticker-bsc-staked-usdt"></span>
-                        <span class="ticker ticker-bsc-staked-usdt-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-bsc-token-reserves-usdt"></span>
+                        <span class="ticker ticker-bsc-token-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity </span>
-                        <span class="ticker ticker-bnb ticker-bsc-coin-liquidity"></span>
-                        <span class="ticker ticker-bsc-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Buyback Reserves </span>
-                        <span class="ticker ticker-bnb ticker-bsc-coin-reserves"></span>
-                        <span class="ticker ticker-bsc-coin-reserves-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-usdt ticker-bsc-vol-txns-usdt-24hr"></span>
-                        <span class="ticker ticker-bsc-vol-txns-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-vol-buy-usdt-24hr"></span>
                         <span class="ticker ticker-bsc-vol-buy-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-sell-usdt-24hr"></span>
                         <span class="ticker ticker-bsc-vol-sell-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-trade-usdt-24hr"></span>
                         <span class="ticker ticker-bsc-vol-trade-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-usdt ticker-bsc-rewards-usdt-24hr"></span>
                         <span class="ticker ticker-bsc-rewards-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-bsc-vol-txns-usdt-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-vol-buy-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-sell-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-trade-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-bsc-rewards-usdt-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-bsc-vol-txns-usdt-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-vol-buy-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-sell-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-trade-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-bsc-rewards-usdt-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-usdt ticker-bsc-vol-txns-usdt"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-bsc-vol-buy-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-sell-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-usdt ticker-bsc-vol-trade-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-usdt ticker-bsc-rewards-usdt"></span>
                     </div>
                 </div>
 
-                <div class="chain stats-eth">
-                    <h3>EverRise ETH</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-eth">
+                    <h3>ETH <img src="https://data.everrise.com/icons/networks/ethereum.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-token-price-usdt"></span>
                         <span class="ticker ticker-eth-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>ETH Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-eth-coin-price-usdt"></span>
                         <span class="ticker ticker-eth-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-eth-market-cap"></span>
                         <span class="ticker ticker-eth-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-usdt ticker-eth-everswap-usdt"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-eth ticker-eth-token-price-coin"></span>
                         <span class="ticker ticker-eth-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-eth-holders"></span>
                         <span class="ticker ticker-eth-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity ETH of MC </span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-eth-liquidity-percent"></span>
                         <span class="ticker ticker-eth-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC </span>
                         <span class="ticker ticker-percentage ticker-eth-coin-reserves-percent"></span>
                         <span class="ticker ticker-eth-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-eth-staked-percent"></span>
-                        <span class="ticker ticker-eth-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-eth-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
                     <div>
-                        <span>Supply on chain </span>
+                        <span class="ticker ticker-percentage ticker-eth-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-eth-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-usdt ticker-eth-staked-usdt"></span>
+                        <!--<span class="ticker ticker-eth-staked-usdt-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-eth-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-eth-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-eth-supply-percent"></span>
                         <span class="ticker ticker-eth-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-eth-staked-onchain-percent"></span>
-                        <span class="ticker ticker-eth-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
 
                     <div>
-                        <span>Liquidity ETH </span>
+                        <span class="ticker ticker-usdt ticker-eth-token-liquidity-usdt"></span>
+                        <span class="ticker ticker-eth-token-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-usdt ticker-eth-coin-liquidity-usdt"></span>
                         <span class="ticker ticker-eth-coin-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-coin-reserves-usdt"></span>
                         <span class="ticker ticker-eth-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-usdt ticker-eth-staked-usdt"></span>
-                        <span class="ticker ticker-eth-staked-usdt-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-eth-token-reserves-usdt"></span>
+                        <span class="ticker ticker-eth-token-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity ETH</span>
-                        <span class="ticker ticker-eth ticker-eth-coin-liquidity"></span>
-                        <span class="ticker ticker-eth-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Buyback Reserves ETH</span>
-                        <span class="ticker ticker-eth ticker-eth-coin-reserves"></span>
-                        <span class="ticker ticker-eth-coin-reserves-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-usdt ticker-eth-vol-txns-usdt-24hr"></span>
-                        <span class="ticker ticker-eth-vol-txns-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-vol-buy-usdt-24hr"></span>
                         <span class="ticker ticker-eth-vol-buy-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-sell-usdt-24hr"></span>
                         <span class="ticker ticker-eth-vol-sell-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-trade-usdt-24hr"></span>
                         <span class="ticker ticker-eth-vol-trade-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-usdt ticker-eth-rewards-usdt-24hr"></span>
                         <span class="ticker ticker-eth-rewards-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-eth-vol-txns-usdt-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-vol-buy-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-sell-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-trade-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-eth-rewards-usdt-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-eth-vol-txns-usdt-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-vol-buy-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-sell-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-trade-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-eth-rewards-usdt-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-usdt ticker-eth-vol-txns-usdt"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-eth-vol-buy-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-sell-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-usdt ticker-eth-vol-trade-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-usdt ticker-eth-rewards-usdt"></span>
                     </div>
                 </div>
 
-                <div class="chain stats-poly">
-                    <h3>EverRise Polygon</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-poly">
+                    <h3>Polygon <img src="https://data.everrise.com/icons/networks/polygon.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-token-price-usdt"></span>
                         <span class="ticker ticker-poly-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>MATIC Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-poly-coin-price-usdt"></span>
                         <span class="ticker ticker-poly-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-poly-market-cap"></span>
                         <span class="ticker ticker-poly-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-usdt ticker-poly-everswap-usdt"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-matic ticker-poly-token-price-coin"></span>
                         <span class="ticker ticker-poly-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-poly-holders"></span>
                         <span class="ticker ticker-poly-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity MATIC of MC </span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-poly-liquidity-percent"></span>
                         <span class="ticker ticker-poly-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC </span>
                         <span class="ticker ticker-percentage ticker-poly-coin-reserves-percent"></span>
                         <span class="ticker ticker-poly-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-poly-staked-percent"></span>
-                        <span class="ticker ticker-poly-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-poly-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
 
                     <div>
-                        <span>Supply on chain </span>
+                        <span class="ticker ticker-percentage ticker-poly-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-poly-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-usdt ticker-poly-staked-usdt"></span>
+                        <!--<span class="ticker ticker-poly-staked-usdt-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-poly-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-poly-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
                         <span class="ticker ticker-percentage ticker-poly-supply-percent"></span>
                         <span class="ticker ticker-poly-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-poly-staked-onchain-percent"></span>
-                        <span class="ticker ticker-poly-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
 
                     <div>
-                        <span>Liquidity MATIC </span>
-                        <span class="ticker ticker-usdt ticker-poly-coin-liquidity-usdt"></span>
-                        <span class="ticker ticker-poly-coin-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-poly-token-liquidity-usdt"></span>
+                        <span class="ticker ticker-poly-token-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves </span>
+                        <span class="ticker ticker-usdt ticker-poly-coin-liquidity-usdt"></span>
+                        <span class="ticker ticker-poly-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
+                    </div>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-coin-reserves-usdt"></span>
                         <span class="ticker ticker-poly-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-usdt ticker-poly-staked-usdt"></span>
-                        <span class="ticker ticker-poly-staked-usdt-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-poly-token-reserves-usdt"></span>
+                        <span class="ticker ticker-poly-token-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity </span>
-                        <span class="ticker ticker-matic ticker-poly-coin-liquidity"></span>
-                        <span class="ticker ticker-poly-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Buyback Reserves </span>
-                        <span class="ticker ticker-matic ticker-poly-coin-reserves"></span>
-                        <span class="ticker ticker-poly-coin-reserves-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-usdt ticker-poly-vol-txns-usdt-24hr"></span>
-                        <span class="ticker ticker-poly-vol-txns-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-vol-buy-usdt-24hr"></span>
                         <span class="ticker ticker-poly-vol-buy-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-sell-usdt-24hr"></span>
                         <span class="ticker ticker-poly-vol-sell-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-trade-usdt-24hr"></span>
                         <span class="ticker ticker-poly-vol-trade-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-usdt ticker-poly-rewards-usdt-24hr"></span>
                         <span class="ticker ticker-poly-rewards-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-poly-vol-txns-usdt-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-vol-buy-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-sell-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-trade-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-poly-rewards-usdt-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-poly-vol-txns-usdt-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-vol-buy-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-sell-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-trade-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-poly-rewards-usdt-14day"></span>
                     </div>
 
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-usdt ticker-poly-vol-txns-usdt"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-poly-vol-buy-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-sell-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-usdt ticker-poly-vol-trade-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-usdt ticker-poly-rewards-usdt"></span>
                     </div>
                 </div>
-                <div class="chain stats-ftm">
-                    <h3>EverRise Fantom</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-ftm">
+                    <h3>Fantom <img src="https://data.everrise.com/icons/networks/fantom.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-token-price-usdt"></span>
                         <span class="ticker ticker-ftm-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>FTM Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-ftm-coin-price-usdt"></span>
                         <span class="ticker ticker-ftm-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-ftm-market-cap"></span>
                         <span class="ticker ticker-ftm-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-usdt ticker-ftm-everswap-usdt"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-ftm ticker-ftm-token-price-coin"></span>
                         <span class="ticker ticker-ftm-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-ftm-holders"></span>
                         <span class="ticker ticker-ftm-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity FTM of MC </span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-ftm-liquidity-percent"></span>
                         <span class="ticker ticker-ftm-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC </span>
                         <span class="ticker ticker-percentage ticker-ftm-coin-reserves-percent"></span>
                         <span class="ticker ticker-ftm-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-ftm-staked-percent"></span>
-                        <span class="ticker ticker-ftm-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-ftm-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-percentage ticker-ftm-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-ftm-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-usdt ticker-ftm-staked-usdt"></span>
+                        <!--<span class="ticker ticker-ftm-staked-usdt-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-ftm-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-ftm-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
 
                     <div>
-                        <span>Supply on chain </span>
                         <span class="ticker ticker-percentage ticker-ftm-supply-percent"></span>
                         <span class="ticker ticker-ftm-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-ftm-staked-onchain-percent"></span>
-                        <span class="ticker ticker-ftm-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
 
                     <div>
-                        <span>Liquidity FTM </span>
+                        <span class="ticker ticker-usdt ticker-ftm-token-liquidity-usdt"></span>
+                        <span class="ticker ticker-ftm-token-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-usdt ticker-ftm-coin-liquidity-usdt"></span>
                         <span class="ticker ticker-ftm-coin-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-coin-reserves-usdt"></span>
                         <span class="ticker ticker-ftm-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-usdt ticker-ftm-staked-usdt"></span>
-                        <span class="ticker ticker-ftm-staked-usdt-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-ftm-token-reserves-usdt"></span>
+                        <span class="ticker ticker-ftm-token-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity </span>
-                        <span class="ticker ticker-ftm ticker-ftm-coin-liquidity"></span>
-                        <span class="ticker ticker-ftm-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Buyback Reserves </span>
-                        <span class="ticker ticker-ftm ticker-ftm-coin-reserves"></span>
-                        <span class="ticker ticker-ftm-coin-reserves-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-usdt ticker-ftm-vol-txns-usdt-24hr"></span>
-                        <span class="ticker ticker-ftm-vol-txns-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-vol-buy-usdt-24hr"></span>
                         <span class="ticker ticker-ftm-vol-buy-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-sell-usdt-24hr"></span>
                         <span class="ticker ticker-ftm-vol-sell-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-trade-usdt-24hr"></span>
                         <span class="ticker ticker-ftm-vol-trade-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-usdt ticker-ftm-rewards-usdt-24hr"></span>
                         <span class="ticker ticker-ftm-rewards-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-ftm-vol-txns-usdt-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-vol-buy-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-sell-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-trade-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-ftm-rewards-usdt-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-ftm-vol-txns-usdt-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-vol-buy-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-sell-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-trade-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-ftm-rewards-usdt-14day"></span>
                     </div>
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-usdt ticker-ftm-vol-txns-usdt"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-ftm-vol-buy-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-sell-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-usdt ticker-ftm-vol-trade-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-usdt ticker-ftm-rewards-usdt"></span>
                     </div>
                 </div>
-                <div class="chain stats-avax">
-                    <h3>EverRise Avalanche</h3>
-                    <div>
-                        <span>RISE Price </span>
+                <div class="chain-data stats-avax">
+                    <h3>Avalanche <img src="https://data.everrise.com/icons/networks/avalanche.svg" /></h3>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-token-price-usdt"></span>
                         <span class="ticker ticker-avax-token-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div class="section">
-                        <span>AVAX Price </span>
+                    <div>
                         <span class="ticker ticker-usdt ticker-avax-coin-price-usdt"></span>
                         <span class="ticker ticker-avax-coin-price-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Market Cap </span>
                         <span class="ticker ticker-usdt ticker-avax-market-cap"></span>
                         <span class="ticker ticker-avax-market-cap-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>RISE Price </span>
+                        <span class="ticker ticker-usdt ticker-avax-everswap-usdt"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-avax ticker-avax-token-price-coin"></span>
                         <span class="ticker ticker-avax-token-price-coin-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Holders </span>
                         <span class="ticker ticker-avax-holders"></span>
                         <span class="ticker ticker-avax-holders-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity AVAX of MC </span>
+                    <div class="section">
                         <span class="ticker ticker-percentage ticker-avax-liquidity-percent"></span>
                         <span class="ticker ticker-avax-liquidity-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Buyback Reserves of MC </span>
                         <span class="ticker ticker-percentage ticker-avax-coin-reserves-percent"></span>
                         <span class="ticker ticker-avax-coin-reserves-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked of Total Supply </span>
                         <span class="ticker ticker-percentage ticker-avax-staked-percent"></span>
-                        <span class="ticker ticker-avax-staked-percent-change ticker-24r-change ticker-percentage"></span>
+                        <!--<span class="ticker ticker-avax-staked-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-percentage ticker-avax-staked-onchain-percent"></span>
+                        <!--<span class="ticker ticker-avax-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-usdt ticker-avax-staked-usdt"></span>
+                        <!--<span class="ticker ticker-avax-staked-usdt-change ticker-24r-change ticker-percentage"></span>-->
+                    </div>
+                    <div>
+                        <span class="ticker ticker-multiplier ticker-avax-staked-multiplier"></span>
+                        <!--<span class="ticker ticker-avax-staked-multiplier-change ticker-24r-change ticker-percentage"></span>-->
                     </div>
 
                     <div>
-                        <span>Supply on chain </span>
                         <span class="ticker ticker-percentage ticker-avax-supply-percent"></span>
                         <span class="ticker ticker-avax-supply-percent-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Staked of On-Chain </span>
-                        <span class="ticker ticker-percentage ticker-avax-staked-onchain-percent"></span>
-                        <span class="ticker ticker-avax-staked-onchain-percent-change ticker-24r-change ticker-percentage"></span>
-                    </div>
 
                     <div>
-                        <span>Liquidity AVAX </span>
+                        <span class="ticker ticker-usdt ticker-avax-token-liquidity-usdt"></span>
+                        <span class="ticker ticker-avax-token-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
+                    </div>
+                    <div>
                         <span class="ticker ticker-usdt ticker-avax-coin-liquidity-usdt"></span>
                         <span class="ticker ticker-avax-coin-liquidity-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Buyback Reserves </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-coin-reserves-usdt"></span>
                         <span class="ticker ticker-avax-coin-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>Staked </span>
-                        <span class="ticker ticker-usdt ticker-avax-staked-usdt"></span>
-                        <span class="ticker ticker-avax-staked-usdt-change ticker-24r-change ticker-percentage"></span>
+                        <span class="ticker ticker-usdt ticker-avax-token-reserves-usdt"></span>
+                        <span class="ticker ticker-avax-token-reserves-usdt-change ticker-24r-change ticker-percentage"></span>
                     </div>
-                    <div>
-                        <span>Liquidity </span>
-                        <span class="ticker ticker-avax ticker-avax-coin-liquidity"></span>
-                        <span class="ticker ticker-avax-coin-liquidity-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>Buyback Reserves </span>
-                        <span class="ticker ticker-avax ticker-avax-coin-reserves"></span>
-                        <span class="ticker ticker-avax-coin-reserves-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Transfers </span>
-                        <span class="ticker ticker-usdt ticker-avax-vol-txns-usdt-24hr"></span>
-                        <span class="ticker ticker-avax-vol-txns-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
-                    </div>
-                    <div>
-                        <span>24hr Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-vol-buy-usdt-24hr"></span>
                         <span class="ticker ticker-avax-vol-buy-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Sell </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-sell-usdt-24hr"></span>
                         <span class="ticker ticker-avax-vol-sell-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Trade </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-trade-usdt-24hr"></span>
                         <span class="ticker ticker-avax-vol-trade-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
                     <div>
-                        <span>24hr Rewards </span>
                         <span class="ticker ticker-usdt ticker-avax-rewards-usdt-24hr"></span>
                         <span class="ticker ticker-avax-rewards-usdt-24hr-change ticker-24r-change ticker-percentage"></span>
                     </div>
 
-                    <div>
-                        <span>7 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-avax-vol-txns-usdt-7day"></span>
-                    </div>
-                    <div>
-                        <span>7 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-vol-buy-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Sell </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-sell-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Trade </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-trade-usdt-7day"></span>
                     </div>
                     <div>
-                        <span>7 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-avax-rewards-usdt-7day"></span>
                     </div>
 
-                    <div>
-                        <span>14 day Transfers </span>
-                        <span class="ticker ticker-usdt ticker-avax-vol-txns-usdt-14day"></span>
-                    </div>
-                    <div>
-                        <span>14 day Buy </span>
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-vol-buy-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Sell </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-sell-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Trade </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-trade-usdt-14day"></span>
                     </div>
                     <div>
-                        <span>14 day Rewards </span>
                         <span class="ticker ticker-usdt ticker-avax-rewards-usdt-14day"></span>
                     </div>
-                    <div>
-                        <span>Total Transfers </span>
-                        <span class="ticker ticker-usdt ticker-avax-vol-txns-usdt"></span>
-                    </div>
-                    <div>
-                        <span>Total Buy </span>
+
+                    <div class="section">
                         <span class="ticker ticker-usdt ticker-avax-vol-buy-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Sell </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-sell-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Trade </span>
                         <span class="ticker ticker-usdt ticker-avax-vol-trade-usdt"></span>
                     </div>
                     <div>
-                        <span>Total Rewards </span>
                         <span class="ticker ticker-usdt ticker-avax-rewards-usdt"></span>
                     </div>
                 </div>

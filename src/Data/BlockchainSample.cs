@@ -5,9 +5,11 @@ public class BlockchainSample
 {
     public string date { get; set; } = DateTime.UtcNow.ToString("s");
 
-    public decimal reservesBalanceValue;
+    public decimal reservesTokenBalanceValue;
+    public decimal reservesCoinBalanceValue;
     public decimal liquidityTokenValue;
     public decimal liquidityCoinValue;
+    public decimal veAmountValue;
     public decimal stakedValue;
     public decimal aveMultiplierValue;
     public decimal rewardsValue;
@@ -21,8 +23,15 @@ public class BlockchainSample
     public decimal tokenPriceStableValue;
     public decimal marketCapValue;
     public decimal blockNumberValue;
+    public decimal timeStampValue;
     public decimal holdersValue;
+    public decimal burnValue;
+    public decimal burnPercentValue;
+    public decimal totalSupplyValue;
+    public decimal everSwapValue;
 
+    public decimal usdReservesTokenBalanceValue;
+    public decimal usdReservesCoinBalanceValue;
     public decimal usdReservesBalanceValue;
     public decimal usdLiquidityTokenValue;
     public decimal usdLiquidityCoinValue;
@@ -32,6 +41,7 @@ public class BlockchainSample
     public decimal usdVolumeBuyValue;
     public decimal usdVolumeSellValue;
     public decimal usdVolumeTradeValue;
+    public decimal usdEverSwapValue;
 
     public decimal supplyOnChainPercentValue;
     public decimal stakedOfTotalSupplyPercentValue;
@@ -40,9 +50,11 @@ public class BlockchainSample
 
 #pragma warning disable IDE1006 // Naming Styles
 #nullable disable
-    public string reservesBalance { get; set; }
+    public string reservesCoinBalance { get; set; }
+    public string reservesTokenBalance { get; set; }
     public string liquidityToken { get; set; }
     public string liquidityCoin { get; set; }
+    public string veAmount { get; set; }
     public string staked { get; set; }
     public string aveMultiplier { get; set; }
     public string rewards { get; set; }
@@ -57,7 +69,13 @@ public class BlockchainSample
     public string marketCap { get; set; }
     public string blockNumber { get; set; }
     public string holders { get; set; }
+    public string burn { get; set; }
+    public string burnPercent { get; set; }
+    public string totalSupply { get; set; }
+    public string everSwap { get; set; }
 
+    public string usdReservesCoinBalance { get; set; }
+    public string usdReservesTokenBalance { get; set; }
     public string usdReservesBalance { get; set; }
     public string usdLiquidityToken { get; set; }
     public string usdLiquidityCoin { get; set; }
@@ -67,6 +85,7 @@ public class BlockchainSample
     public string usdVolumeBuy { get; set; }
     public string usdVolumeSell { get; set; }
     public string usdVolumeTrade { get; set; }
+    public string usdEverSwap { get; set; }
 
     public string supplyOnChainPercent { get; set; }
     public string stakedOfTotalSupplyPercent { get; set; }
@@ -78,7 +97,8 @@ public class BlockchainSample
 
     public void CreateStringRepresentations()
     {
-        reservesBalance = reservesBalanceValue.ToString(reservesBalanceValue >= 0 ? "0.00000000" : "0");
+        reservesTokenBalance = reservesTokenBalanceValue.ToString(reservesTokenBalanceValue >= 0 ? "0.00000000" : "0");
+        reservesCoinBalance = reservesCoinBalanceValue.ToString(reservesCoinBalanceValue >= 0 ? "0.00000000" : "0");
         liquidityToken = liquidityTokenValue.ToString("0.00000000");
         liquidityCoin = liquidityCoinValue.ToString(liquidityCoinValue >= 0 ? "0.00000000" : "0");
         staked = stakedValue.ToString("0.00000000");
@@ -95,7 +115,14 @@ public class BlockchainSample
         marketCap = marketCapValue.ToString("0.00000000");
         blockNumber = blockNumberValue.ToString("0");
         holders = holdersValue.ToString("0");
+        veAmount = veAmountValue.ToString("0.00000000");
+        burn = burnValue.ToString("0.00000000");
+        burnPercent = burnPercentValue.ToString("0.00000000");
+        totalSupply = totalSupplyValue.ToString("0.00000000");
+        everSwap = everSwapValue.ToString("0.00000000");
 
+        usdReservesCoinBalance = usdReservesCoinBalanceValue.ToString("0.00000000");
+        usdReservesTokenBalance = usdReservesTokenBalanceValue.ToString("0.00000000");
         usdReservesBalance = usdReservesBalanceValue.ToString("0.00000000");
         usdLiquidityToken = usdLiquidityTokenValue.ToString("0.00000000");
         usdLiquidityCoin = usdLiquidityCoinValue.ToString("0.00000000");
@@ -105,6 +132,7 @@ public class BlockchainSample
         usdVolumeBuy = usdVolumeBuyValue.ToString("0.00000000");
         usdVolumeSell = usdVolumeSellValue.ToString("0.00000000");
         usdVolumeTrade = usdVolumeTradeValue.ToString("0.00000000");
+        usdEverSwap = usdEverSwapValue.ToString("0.00000000");
 
         supplyOnChainPercent = supplyOnChainPercentValue.ToString("0.00000000");
         stakedOfTotalSupplyPercent = stakedOfTotalSupplyPercentValue.ToString("0.00000000");

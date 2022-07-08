@@ -11,12 +11,17 @@ namespace EverStats.Data;
 
 public class BlockchainQuery
 {
+    private static string s_riseContract = "0xC17c30e98541188614dF99239cABD40280810cA3";
+    private static string s_buybackWalletRaw = "78b939518f51b6da10afb3c3238Dd04014e00057";
+    private static string s_buybackWallet = "0x" + s_buybackWalletRaw;
+    private static string s_veRiseContract = "0xDbA7b24257fC6e397cB7368B4BC922E944072f1b";
     private readonly static JsonSerializerOptions s_options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
 
     private readonly string[] _currentEndpoints;
     private readonly string[] _historyEndpoints;
     private readonly string _statsContractAddress;
+    private readonly string _everSwapAddress;
 
     private HttpClient _nodeClient;
     private HttpClient _web3Client;
@@ -35,18 +40,23 @@ public class BlockchainQuery
     private Task _history7dayTask = Task.CompletedTask;
     private Task _history14dayTask = Task.CompletedTask;
 
-    private DateTimeOffset _avaxFtmLaunch = new DateTimeOffset(new DateTime(2022, 01, 23, 22, 50, 00));
+    private DateTimeOffset _avaxFtmLaunch = new DateTimeOffset(new DateTime(2022, 04, 04, 1, 0, 00));
 
-    public BlockchainQuery(ApiConfig config, BlockchainStats stats, string[] currentEndpoints, string[] archiveEndpoints, string statsContractAddress)
+    private ILogger<BlockchainQuery> _logger;
+
+    public BlockchainQuery(ApiConfig config, BlockchainStats stats, string[] currentEndpoints, string[] archiveEndpoints, string statsContractAddress, string everSwapAddress, ILogger<BlockchainQuery> logger)
     {
         _config = config;
         _currentEndpoints = currentEndpoints;
         _historyEndpoints = archiveEndpoints;
         _statsContractAddress = statsContractAddress;
+        _everSwapAddress = everSwapAddress;
         _stats = stats;
         _nodeClient = GetHttpClient();
         _web3Client = GetHttpClient();
         _web3Client.DefaultRequestHeaders.Add("X-API-Key", config.MoralisConfiguration.Web3ApiKey);
+
+        _logger = logger;
     }
 
     private static HttpClient GetHttpClient()
@@ -131,7 +141,7 @@ public class BlockchainQuery
             var queryDate = DateTimeOffset.UtcNow.AddDays(-days);
 
             BlockchainSample historyData = null;
-            if ((_stats.Chain == "avalanche" || _stats.Chain == "fantom") && queryDate < _avaxFtmLaunch)
+            if (queryDate < _avaxFtmLaunch)
             {
                 historyData = new BlockchainSample();
             }
@@ -230,13 +240,47 @@ public class BlockchainQuery
     {
         if (apiEndpoints.Length == 0) return null;
 
-        var rpc = new RpcCall(_statsContractAddress, blockNumber);
+        var rpc = new[] {
+            new RpcCall(
+                address: _statsContractAddress,
+                method: "0xc59d4847000000000000000000000000",
+                id: 1,
+                blockNumber),
+            new RpcCall(
+                address: s_veRiseContract,
+                method: "0x18160ddd000000000000000000000000",
+                id: 2,
+                blockNumber),
+            // Burn
+            new RpcCall(
+                address: s_riseContract,
+                method: "0x70a08231000000000000000000000000000000000000000000000000000000000000dead",
+                id: 3,
+                blockNumber),
+            new RpcCall(
+                address: _everSwapAddress,
+                method: "0x588eb7c5000000000000000000000000",
+                id: 4,
+                blockNumber),
+            // Rewards Buyback
+            new RpcCall(
+                address: s_buybackWallet,
+                id: 5,
+                blockNumber
+            ),
+            // Rewards RISE
+            new RpcCall(
+                address: s_riseContract,
+                method: "0x70a08231000000000000000000000000" + s_buybackWalletRaw,
+                id: 6,
+                blockNumber),
+        };
 
         var json = JsonSerializer.Serialize(rpc, s_options);
 
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        RpcResult? response = null;
+        RpcResult[]? response = null;
         while (response is null)
         {
             for (int i = 0; i < apiEndpoints.Length; i++)
@@ -246,6 +290,12 @@ public class BlockchainQuery
                 try
                 {
                     response = await QueryEndpoint(apiEndpoint, content);
+                    if (response is null)
+                    {
+                        //_logger.LogError($"{apiEndpoint} : {response.error.message}");
+                        continue;
+                    }
+
                     var quatities = GetData(response);
                     if (checkBlock)
                     {
@@ -258,11 +308,14 @@ public class BlockchainQuery
                     }
                     return quatities;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogError(ex, $"{_stats.Chain} : {ex.Message}");
                     continue;
                 }
             }
+
+            _logger.LogWarning($"{_stats.Chain} : Tried {apiEndpoints.Length} endpoints, none sucessful.");
 
             _nodeClient?.Dispose();
             _nodeClient = GetHttpClient();
@@ -272,26 +325,37 @@ public class BlockchainQuery
         return null;
     }
 
-    private BlockchainSample GetData(RpcResult response)
+    static RpcResult? GetRespose(int id, RpcResult[] responses)
     {
+        for (int i = 0; i < responses.Length; i++)
+        {
+            var response = responses[i];
+            if (response.id == id) return response;
+        }
+
+        return null;
+    }
+
+    private BlockchainSample GetData(RpcResult[] responses)
+    {
+        RpcResult responseStats = GetRespose(1, responses);
+
         var quatities = new BlockchainSample();
 
         var length = 64;
-        var hex = response.result.AsSpan(2);
+        var hex = responseStats.result.AsSpan(2);
 
-        quatities.reservesBalanceValue = HexToDecimal(hex.Slice(0, length));
+        quatities.reservesCoinBalanceValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
         quatities.liquidityTokenValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
         quatities.liquidityCoinValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
-        quatities.stakedValue = HexToDecimal(hex.Slice(0, length));
+        //quatities.stakedValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
-        quatities.aveMultiplierValue = HexToDecimal(hex.Slice(0, length));
+        //quatities.aveMultiplierValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
         quatities.rewardsValue = HexToDecimal(hex.Slice(0, length));
-        hex = hex.Slice(length);
-        quatities.volumeTransfersValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
         quatities.volumeBuyValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
@@ -311,8 +375,12 @@ public class BlockchainQuery
         hex = hex.Slice(length);
         quatities.blockNumberValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
+        quatities.timeStampValue = HexToDecimal(hex.Slice(0, length));
+        hex = hex.Slice(length);
         quatities.holdersValue = HexToDecimal(hex.Slice(0, length));
         hex = hex.Slice(length);
+
+        quatities.date = (DateTime.UnixEpoch + TimeSpan.FromSeconds((int)quatities.timeStampValue)).ToString("s");
 
         var ten = 10;
         var tokenDivisor = (decimal)Math.Pow(ten, (double)HexToDecimal(hex.Slice(0, length)));
@@ -324,15 +392,13 @@ public class BlockchainQuery
         var multiplierDivisor = (decimal)Math.Pow(ten, (double)HexToDecimal(hex.Slice(0, length)));
         hex = hex.Slice(length);
 
-        quatities.reservesBalanceValue = quatities.reservesBalanceValue / coinDivisor;
+        quatities.reservesCoinBalanceValue = quatities.reservesCoinBalanceValue / coinDivisor;
         quatities.liquidityTokenValue = quatities.liquidityTokenValue / tokenDivisor;
         quatities.liquidityCoinValue = quatities.liquidityCoinValue / coinDivisor;
-        quatities.stakedValue = quatities.stakedValue / tokenDivisor;
+        //quatities.stakedValue = quatities.stakedValue / tokenDivisor;
         quatities.rewardsValue = quatities.rewardsValue / tokenDivisor;
 
-        quatities.stakedValue -= quatities.rewardsValue;
-
-        quatities.aveMultiplierValue = quatities.aveMultiplierValue / multiplierDivisor;
+        //quatities.aveMultiplierValue = quatities.aveMultiplierValue / multiplierDivisor;
         quatities.volumeTransfersValue = quatities.volumeTransfersValue / tokenDivisor;
         quatities.volumeBuyValue = quatities.volumeBuyValue / tokenDivisor;
         quatities.volumeSellValue = quatities.volumeSellValue / tokenDivisor;
@@ -343,31 +409,71 @@ public class BlockchainQuery
         quatities.tokenPriceStableValue = quatities.tokenPriceStableValue / stableDivisor;
         quatities.marketCapValue = quatities.marketCapValue / stableDivisor;
 
-        quatities.usdReservesBalanceValue = quatities.reservesBalanceValue * quatities.coinPriceStableValue;
+        quatities.usdReservesCoinBalanceValue = quatities.reservesCoinBalanceValue * quatities.coinPriceStableValue;
         quatities.usdLiquidityTokenValue = quatities.liquidityTokenValue * quatities.tokenPriceStableValue;
         quatities.usdLiquidityCoinValue = quatities.liquidityCoinValue * quatities.coinPriceStableValue;
-        quatities.usdStakedValue = quatities.stakedValue * quatities.tokenPriceStableValue;
+        //quatities.usdStakedValue = quatities.stakedValue * quatities.tokenPriceStableValue;
         quatities.usdRewardsValue = quatities.rewardsValue * quatities.tokenPriceStableValue;
         quatities.usdVolumeTransfersValue = quatities.volumeTransfersValue * quatities.tokenPriceStableValue;
         quatities.usdVolumeBuyValue = quatities.volumeBuyValue * quatities.tokenPriceStableValue;
         quatities.usdVolumeSellValue = quatities.volumeSellValue * quatities.tokenPriceStableValue;
         quatities.usdVolumeTradeValue = quatities.volumeTradeValue * quatities.tokenPriceStableValue;
 
+        RpcResult responseSupply = GetRespose(2, responses);
+
+        length = 64;
+        hex = responseSupply.result.AsSpan(2);
+
+        quatities.veAmountValue = HexToDecimal(hex.Slice(0, length), false, tokenDivisor);
+
+        RpcResult responseBurn = GetRespose(3, responses);
+
+        length = 64;
+        hex = responseBurn.result.AsSpan(2);
+
+        quatities.burnValue = HexToDecimal(hex.Slice(0, length), false, tokenDivisor);
+        quatities.burnPercentValue = quatities.burnValue / 71_618_033_988m;
+
+        RpcResult responseEverSwap = GetRespose(4, responses);
+        hex = responseEverSwap.result.AsSpan(2);
+
+        quatities.everSwapValue = hex.Length == 0 ? 0 : HexToDecimal(hex.Slice(0, length), false, coinDivisor);
+        quatities.usdEverSwapValue = quatities.everSwapValue * quatities.coinPriceStableValue;
+
+        RpcResult buybackRewards = GetRespose(5, responses);
+        hex = buybackRewards.result.AsSpan(2);
+
+        var extraReserves = hex.Length <= 1 ? 0 : HexToDecimal(hex, false, coinDivisor);
+
+        quatities.reservesCoinBalanceValue += extraReserves;
+        quatities.usdReservesCoinBalanceValue = quatities.reservesCoinBalanceValue * quatities.coinPriceStableValue;
+
+        RpcResult rewards = GetRespose(6, responses);
+        hex = rewards.result.AsSpan(2);
+
+        var extraRewards = hex.Length <= 1 ? 0 : HexToDecimal(hex, false, tokenDivisor);
+
+        quatities.reservesTokenBalanceValue = extraRewards;
+        quatities.usdReservesTokenBalanceValue = quatities.reservesTokenBalanceValue * quatities.tokenPriceStableValue;
+
+        quatities.usdReservesBalanceValue = quatities.usdReservesTokenBalanceValue + quatities.usdReservesCoinBalanceValue;
+
         return quatities;
     }
 
-    private async Task<RpcResult?> QueryEndpoint(string endpoint, HttpContent content)
+    private async Task<RpcResult[]?> QueryEndpoint(string endpoint, HttpContent content)
     {
         using var response = await _nodeClient.PostAsync(endpoint, content);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<RpcResult>(json);
+        return JsonSerializer.Deserialize<RpcResult[]>(json);
     }
 
-    public decimal HexToDecimal(ReadOnlySpan<char> hex, bool isHexLittleEndian = false)
+
+    public decimal HexToDecimal(ReadOnlySpan<char> hex, bool isHexLittleEndian = false, decimal divisor = 1m)
     {
-        if (hex == "0x0") return 0;
+        if (hex.Length == 0 || hex == "0" || hex == "0x0") return 0;
 
         var encoded = HexToByteArray(hex);
 
@@ -377,7 +483,20 @@ public class BlockchainQuery
             listEncoded.Insert(0, 0x00);
             encoded = listEncoded.ToArray().Reverse().ToArray();
         }
-        return (decimal)(new BigInteger(encoded));
+
+        var nominator = new BigInteger(encoded);
+        if (divisor != 1m)
+        {
+            if (nominator > new BigInteger(decimal.MaxValue))
+            {
+                return (decimal)(nominator / new BigInteger(divisor));
+            }
+            else
+            {
+                return ((decimal)nominator / (decimal)new BigInteger(divisor));
+            }
+        }  
+        return ((decimal)nominator);
     }
 
     private static byte[] HexToByteArray(ReadOnlySpan<char> value)
