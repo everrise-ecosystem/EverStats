@@ -14,11 +14,13 @@ public class BlockchainQuery
     private static string s_riseContract = "0xC17c30e98541188614dF99239cABD40280810cA3";
     private static string s_buybackWalletRaw = "78b939518f51b6da10afb3c3238Dd04014e00057";
     private static string s_buybackWallet = "0x" + s_buybackWalletRaw;
+    private static string s_distributorRaw = "3776B8C349BC9Af202E4D98Af163D59cA56d2fC5";
+    private static string s_distributor = "0x" + s_distributorRaw;
     private static string s_veRiseContract = "0xDbA7b24257fC6e397cB7368B4BC922E944072f1b";
     private readonly static JsonSerializerOptions s_options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
 
-    private readonly string[] _currentEndpoints;
+    public string[] CurrentEndpoints { get; }
     private readonly string[] _historyEndpoints;
     private readonly string _statsContractAddress;
     private readonly string _everSwapAddress;
@@ -47,7 +49,7 @@ public class BlockchainQuery
     public BlockchainQuery(ApiConfig config, BlockchainStats stats, string[] currentEndpoints, string[] archiveEndpoints, string statsContractAddress, string everSwapAddress, ILogger<BlockchainQuery> logger)
     {
         _config = config;
-        _currentEndpoints = currentEndpoints;
+        CurrentEndpoints = currentEndpoints;
         _historyEndpoints = archiveEndpoints;
         _statsContractAddress = statsContractAddress;
         _everSwapAddress = everSwapAddress;
@@ -76,7 +78,10 @@ public class BlockchainQuery
 
     public async Task GetData()
     {
-        _stats.current = await QueryStats(_currentEndpoints, "latest", checkBlock: true);
+        var lastStore = _stats?.current?.lastStored;
+        _stats.current = await QueryStats(CurrentEndpoints, "latest", checkBlock: true);
+        _stats.current.lastStored = lastStore;
+
         if (_stats.history24hrs is null)
         {
             _stats.history24hrs = _stats.current;
@@ -274,6 +279,12 @@ public class BlockchainQuery
                 method: "0x70a08231000000000000000000000000" + s_buybackWalletRaw,
                 id: 6,
                 blockNumber),
+            // Distributor RISE
+            new RpcCall(
+                address: s_riseContract,
+                method: "0x70a08231000000000000000000000000" + s_distributorRaw,
+                id: 7,
+                blockNumber),
         };
 
         var json = JsonSerializer.Serialize(rpc, s_options);
@@ -339,6 +350,10 @@ public class BlockchainQuery
     private BlockchainSample GetData(RpcResult[] responses)
     {
         RpcResult responseStats = GetRespose(1, responses);
+        if (responseStats?.error is not null)
+        {
+            throw new Exception(responseStats.error.message);
+        }
 
         var quatities = new BlockchainSample();
 
@@ -452,6 +467,11 @@ public class BlockchainQuery
         hex = rewards.result.AsSpan(2);
 
         var extraRewards = hex.Length <= 1 ? 0 : HexToDecimal(hex, false, tokenDivisor);
+
+        RpcResult distributingRewards = GetRespose(7, responses);
+        hex = distributingRewards.result.AsSpan(2);
+
+        extraRewards += hex.Length <= 1 ? 0 : HexToDecimal(hex, false, tokenDivisor);
 
         quatities.reservesTokenBalanceValue = extraRewards;
         quatities.usdReservesTokenBalanceValue = quatities.reservesTokenBalanceValue * quatities.tokenPriceStableValue;

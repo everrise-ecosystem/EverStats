@@ -3,7 +3,8 @@
 namespace EverStats.Data;
 public class BlockchainSample
 {
-    public string date { get; set; } = DateTime.UtcNow.ToString("s");
+    public string? date { get; set; }
+    public string? lastStored = null;
 
     public decimal reservesTokenBalanceValue;
     public decimal reservesCoinBalanceValue;
@@ -47,6 +48,7 @@ public class BlockchainSample
     public decimal stakedOfTotalSupplyPercentValue;
     public decimal stakedOfOnChainPercentValue;
     public decimal stakedOfTotalStakedPercentValue;
+    public decimal veRiseOnChainPercentValue;
 
 #pragma warning disable IDE1006 // Naming Styles
 #nullable disable
@@ -91,6 +93,7 @@ public class BlockchainSample
     public string stakedOfTotalSupplyPercent { get; set; }
     public string stakedOfOnChainPercent { get; set; }
     public string stakedOfTotalStakedPercent { get; set; }
+    public string veRiseOnChainPercent { get; set; }
 #nullable enable
 #pragma warning restore IDE1006 // Naming Styles
 
@@ -138,5 +141,6 @@ public class BlockchainSample
         stakedOfTotalSupplyPercent = stakedOfTotalSupplyPercentValue.ToString("0.00000000");
         stakedOfOnChainPercent = stakedOfOnChainPercentValue.ToString("0.00000000");
         stakedOfTotalStakedPercent = stakedOfTotalStakedPercentValue.ToString("0.00000000");
+        veRiseOnChainPercent = veRiseOnChainPercentValue.ToString("0.00000000");
     }
 }

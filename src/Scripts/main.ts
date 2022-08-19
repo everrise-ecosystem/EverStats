@@ -55,6 +55,7 @@ interface PeriodData {
     stakedOfTotalSupplyPercent:string;
     stakedOfOnChainPercent:string;
     stakedOfTotalStakedPercent:string;
+    veRiseOnChainPercent:string;
 }
 
 interface ChainData {
@@ -139,6 +140,7 @@ interface Data {
     stakedPercent: Stat;
     stakedMultiplier: Stat;
     stakedOnChain: Stat;
+    veRiseOnChain: Stat;
 
     rewardsToken: Stat;
     rewardsToken24hr: Stat;
@@ -241,6 +243,7 @@ class Coin {
             stakedMultiplier: Coin.CreateStat(`.ticker-${network}-staked-multiplier`, 4),
             supplyOnChain: Coin.CreateStat(`.ticker-${network}-supply-percent`, 4),
             stakedOnChain: Coin.CreateStat(`.ticker-${network}-staked-onchain-percent`, 4),
+            veRiseOnChain: Coin.CreateStat(`.ticker-${network}-veRise-onchain-percent`, 4),
 
             rewardsToken: Coin.CreateStat(`.ticker-${network}-rewards-token`, 2),
             rewardsToken24hr: Coin.CreateStat(`.ticker-${network}-rewards-token-24hr`, 2),
@@ -320,6 +323,7 @@ class Coin {
                 yield data.stakedMultiplier;
                 yield data.supplyOnChain;
                 yield data.stakedOnChain;
+                yield data.veRiseOnChain;
                 yield data.rewardsUSDT;
                 yield data.rewardsUSDT24hr;
                 yield data.rewardsUSDT7day;
@@ -337,7 +341,14 @@ class Coin {
         }
     }
 
+    frame: number = 0;
     public animate() {
+        if (this.frame == 1) {
+          this.frame = 0;
+          return;
+        }
+        this.frame++;
+
         this.times.timeCurrent = performance.now() / 1000;
         const delta = Math.min(1, (this.times.timeCurrent - this.times.timeNow) / Coin.queryFrequency);
         const deltaBig = Big(delta);
@@ -648,6 +659,8 @@ class Coin {
         Coin.updateMeasure(sample[when], Big(period.supplyOnChainPercent).mul(100));
         sample = data.stakedOnChain.sample;
         Coin.updateMeasure(sample[when], Big(period.stakedOfOnChainPercent).mul(100));
+        sample = data.veRiseOnChain.sample;
+        Coin.updateMeasure(sample[when], Big(period.veRiseOnChainPercent).mul(100));
         
         for (var item of data) {
             const stat = item as Stat;

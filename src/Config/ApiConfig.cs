@@ -9,6 +9,9 @@ public class ApiConfig
     private static readonly string _configurationFileName = $"{nameof(ApiConfig).ToLower()}.json";
 
 #nullable disable
+    public bool StoreInDb { get; set; }
+    public bool SendTweets { get; set; }
+    public AzureConfiguration AzureConfiguration { get; set; }
     public TwitterConfiguration TwitterConfiguration { get; set; }
     public MoralisConfiguration MoralisConfiguration { get; set; }
 

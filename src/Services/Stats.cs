@@ -8,12 +8,26 @@ using System.Text.Json;
 using EverStats.Config;
 using EverStats.Data;
 
+using Nethereum.Signer;
+using Nethereum.Web3;
+using Contracts.Contracts.EverRise;
+
+using Sylvan.Data.Csv;
+using System.Runtime.ExceptionServices;
+using System.Net.Sockets;
+using System.Diagnostics;
+using System.Reflection;
+using Azure.Storage.Blobs;
+using Microsoft.Data.SqlClient;
+using System.Runtime.Intrinsics.X86;
+
 namespace EverStats.Services;
 public class Stats : IHostedService
 {
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
     private readonly static JsonSerializerOptions _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     private readonly ILogger<BlockchainQuery> _logger;
+    private readonly ApiConfig _config;
     private CancellationTokenSource _cts = new CancellationTokenSource();
     private SemaphoreSlim _calcSemaphore = new SemaphoreSlim(0);
     private SemaphoreSlim _serializeSemaphore = new SemaphoreSlim(0);
@@ -118,8 +132,7 @@ public class Stats : IHostedService
 
             try
             {
-                var json = await _stakingClient.GetStringAsync("https://app.everrise.com/bridge/api/v1/stats");
-                var stakedAmounts = JsonSerializer.Deserialize<StakeAmounts[]>(json);
+                var stakedAmounts = await GetStakeAmounts();
                 for (int i = 0; i < stakedAmounts.Length; i++)
                 {
                     var staked = stakedAmounts[i];
@@ -197,7 +210,7 @@ public class Stats : IHostedService
                 _stakingClient = GetHttpClient();
             }
 
-            if (RecalculateUnified())
+            if (await RecalculateUnified())
             {
                 _serializeSemaphore.Release();
             }
@@ -210,11 +223,15 @@ public class Stats : IHostedService
         public double amount { get; set; }
     }
 
-    private bool RecalculateUnified()
+    private async Task<bool> RecalculateUnified()
     {
         var sample = Recalculate(bsc.current, eth.current, poly.current, ftm.current, avax.current);
         if (sample is null) return false;
         unified.current = sample;
+
+        if (_config.StoreInDb) {
+            await StoreInDb();
+        }
 
         sample = Recalculate(bsc.history24hrs, eth.history24hrs, poly.history24hrs, ftm.history24hrs, avax.history24hrs);
         if (sample is not null)
@@ -262,6 +279,97 @@ public class Stats : IHostedService
         }
 
         return true;
+    }
+
+    private async Task StoreInDb()
+    {
+        using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
+        await conn.OpenAsync();
+
+        await StoreInDb(chainId: 0, unified.current, conn);
+        foreach (var chain in _chains)
+        {
+            await StoreInDb(chain.ChainId, chain.Stats.current, conn);
+        }
+    }
+
+    private async Task StoreInDb(int chainId, BlockchainSample sample, SqlConnection conn)
+    {
+        try
+        {
+            if (sample.date != sample.lastStored) {
+                using var cmd = new SqlCommand(@"
+            INSERT INTO chain_time_data
+                ([date], [chainId],
+                [reservesCoinBalance], [reservesTokenBalance], [liquidityToken], [liquidityCoin], [veAmount], [staked], 
+                [aveMultiplier], [rewards], [volumeBuy], [volumeSell], [volumeTrade], [bridgeVault], 
+                [tokenPriceCoin], [coinPriceStable], [tokenPriceStable], [marketCap], [blockNumber], [holders], [burn], 
+                [burnPercent], [totalSupply], [everSwap], [usdReservesCoinBalance], [usdReservesTokenBalance], [usdReservesBalance], 
+                [usdLiquidityToken], [usdLiquidityCoin], [usdStaked], [usdRewards], [usdVolumeBuy], 
+                [usdVolumeSell], [usdVolumeTrade], [usdEverSwap], [supplyOnChainPercent], [stakedOfTotalSupplyPercent], 
+                [stakedOfOnChainPercent], [stakedOfTotalStakedPercent], [veRiseOnChainPercent])
+            VALUES
+                (@date, @chainId, 
+                @reservesCoinBalance, @reservesTokenBalance, @liquidityToken, @liquidityCoin, @veAmount, @staked, 
+                @aveMultiplier, @rewards, @volumeBuy, @volumeSell, @volumeTrade, @bridgeVault, 
+                @tokenPriceCoin, @coinPriceStable, @tokenPriceStable, @marketCap, @blockNumber, @holders, @burn, 
+                @burnPercent, @totalSupply, @everSwap, @usdReservesCoinBalance, @usdReservesTokenBalance, @usdReservesBalance, 
+                @usdLiquidityToken, @usdLiquidityCoin, @usdStaked, @usdRewards, @usdVolumeBuy, 
+                @usdVolumeSell, @usdVolumeTrade, @usdEverSwap, @supplyOnChainPercent, @stakedOfTotalSupplyPercent, 
+                @stakedOfOnChainPercent, @stakedOfTotalStakedPercent, @veRiseOnChainPercent)", conn);
+
+                var param = cmd.Parameters;
+                param.AddWithValue("@date", sample.date);
+                param.AddWithValue("@chainId", chainId);
+                param.AddWithValue("@reservesTokenBalance", sample.reservesTokenBalanceValue);
+                param.AddWithValue("@reservesCoinBalance", sample.reservesCoinBalanceValue);
+                param.AddWithValue("@liquidityToken", sample.liquidityTokenValue);
+                param.AddWithValue("@liquidityCoin", sample.liquidityCoinValue);
+                param.AddWithValue("@veAmount", sample.veAmountValue);
+                param.AddWithValue("@staked", sample.stakedValue);
+                param.AddWithValue("@aveMultiplier", sample.aveMultiplierValue);
+                param.AddWithValue("@rewards", sample.rewardsValue);
+                param.AddWithValue("@volumeBuy", sample.volumeBuyValue);
+                param.AddWithValue("@volumeSell", sample.volumeSellValue);
+                param.AddWithValue("@volumeTrade", sample.volumeTradeValue);
+                param.AddWithValue("@bridgeVault", sample.bridgeVaultValue);
+                param.AddWithValue("@tokenPriceCoin", sample.tokenPriceCoinValue);
+                param.AddWithValue("@coinPriceStable", sample.coinPriceStableValue);
+                param.AddWithValue("@tokenPriceStable", sample.tokenPriceStableValue);
+                param.AddWithValue("@marketCap", sample.marketCapValue);
+                param.AddWithValue("@blockNumber", sample.blockNumberValue);
+                param.AddWithValue("@timeStamp", sample.timeStampValue);
+                param.AddWithValue("@holders", sample.holdersValue);
+                param.AddWithValue("@burn", sample.burnValue);
+                param.AddWithValue("@burnPercent", sample.burnPercentValue);
+                param.AddWithValue("@totalSupply", sample.totalSupplyValue);
+                param.AddWithValue("@everSwap", sample.everSwapValue);
+                param.AddWithValue("@usdReservesTokenBalance", sample.usdReservesTokenBalanceValue);
+                param.AddWithValue("@usdReservesCoinBalance", sample.usdReservesCoinBalanceValue);
+                param.AddWithValue("@usdReservesBalance", sample.usdReservesBalanceValue);
+                param.AddWithValue("@usdLiquidityToken", sample.usdLiquidityTokenValue);
+                param.AddWithValue("@usdLiquidityCoin", sample.usdLiquidityCoinValue);
+                param.AddWithValue("@usdStaked", sample.usdStakedValue);
+                param.AddWithValue("@usdRewards", sample.usdRewardsValue);
+                param.AddWithValue("@usdVolumeBuy", sample.usdVolumeBuyValue);
+                param.AddWithValue("@usdVolumeSell", sample.usdVolumeSellValue);
+                param.AddWithValue("@usdVolumeTrade", sample.usdVolumeTradeValue);
+                param.AddWithValue("@usdEverSwap", sample.usdEverSwapValue);
+                param.AddWithValue("@supplyOnChainPercent", sample.supplyOnChainPercentValue);
+                param.AddWithValue("@stakedOfTotalSupplyPercent", sample.stakedOfTotalSupplyPercentValue);
+                param.AddWithValue("@stakedOfOnChainPercent", sample.stakedOfOnChainPercentValue);
+                param.AddWithValue("@stakedOfTotalStakedPercent", sample.stakedOfTotalStakedPercentValue);
+                param.AddWithValue("@veRiseOnChainPercent", sample.veRiseOnChainPercentValue);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                sample.lastStored = sample.date;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+        }
     }
 
     private BlockchainSample? Recalculate(params BlockchainSample[] samples)
@@ -386,12 +494,14 @@ public class Stats : IHostedService
             chain.stakedOfTotalSupplyPercentValue = totalSupply == 0 ? 0 : chain.stakedValue / totalSupply;
             chain.stakedOfOnChainPercentValue = supplyOnChainPercentValue == 0 ? 0 : chain.stakedValue / (supplyOnChainPercentValue * totalSupply);
             chain.stakedOfTotalStakedPercentValue = totalSupply == 0 ? 0 : chain.stakedValue / stakingTotal;
+            chain.veRiseOnChainPercentValue = veAmountValue == 0 ? 0 : chain.veAmountValue / veAmountValue;
         }
 
         var sample = new BlockchainSample()
         {
             timeStampValue = timeStampValue,
             date = (DateTime.UnixEpoch + TimeSpan.FromSeconds((int)timeStampValue)).ToString("s"),
+            lastStored = unified?.current?.lastStored,
             reservesCoinBalanceValue = reservesCoinBalanceValue,
             reservesTokenBalanceValue = reservesTokenBalanceValue,
             liquidityTokenValue = liquidityTokenValue,
@@ -429,6 +539,7 @@ public class Stats : IHostedService
             stakedOfTotalSupplyPercentValue = stakingTotal / totalSupply,
             stakedOfOnChainPercentValue = stakedValue / totalSupply,
             stakedOfTotalStakedPercentValue = 1m,
+            veRiseOnChainPercentValue = 1m,
 
             usdReservesCoinBalanceValue = usdReservesCoinBalanceValue,
             usdReservesTokenBalanceValue = usdReservesTokenBalanceValue,
@@ -455,9 +566,151 @@ public class Stats : IHostedService
         }
     }
 
+    struct ChainInfo
+    {
+        public BlockchainStats Stats;
+        public BlockchainQuery Query;
+        public string Chain;
+        public int ChainId;
+    }
+
+    static ChainInfo[] _chains;
+    private string[]  _addresses;
+
+    private Task _loadHolderListTask;
+
+    private Task DownloadHolderLists()
+    {
+        // Create a BlobServiceClient object which will be used to create a container client
+        BlobServiceClient blobServiceClient = new BlobServiceClient(_config.AzureConfiguration.StorageConnection);
+
+        // Create the container and return a container client object
+        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient("holder-data");
+
+        List<Task> downloads = new();
+        foreach (var coin in _chains)
+        {
+            var fileName = $"{coin.Chain}-tokenholders-for-contract-0xc17c30e98541188614df99239cabd40280810ca3.csv";
+            var destination = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), fileName);
+
+            BlobClient blobClient = containerClient.GetBlobClient(fileName);
+
+            downloads.Add(blobClient.DownloadToAsync(destination));
+        }
+
+        return Task.WhenAll(downloads);
+    }
+
+    private async Task LoadHolderList()
+    {
+        await DownloadHolderLists();
+
+        var addressesSet = new HashSet<string>();
+        foreach (var coin in _chains)
+        {
+            var fileName = $"{coin.Chain}-tokenholders-for-contract-0xc17c30e98541188614df99239cabd40280810ca3.csv";
+            var file = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), fileName);
+            using var csv = CsvDataReader.Create(file);
+
+            while (await csv.ReadAsync())
+            {
+                var id = csv.GetString(0);
+                addressesSet.Add(id);
+            }
+        }
+
+        _addresses = addressesSet.ToArray();
+    }
+
+
+    private static async Task<decimal> GetLocked(Web3 web3, string[] addresses)
+    {
+        var everRise = new EverRiseService(web3, "0xC17c30e98541188614dF99239cABD40280810cA3");
+
+        var lockedAmount = await everRise.GetAmountLockedUsingMultiCallAsync(addresses, numberOfCallsPerRequest: 2000);
+
+        var totalStaked = lockedAmount.Select(x => Nethereum.Util.UnitConversion.Convert.FromWei(x)).Sum();
+
+        return totalStaked;
+    }
+
+    private async Task<(int ChainId, decimal Locked)> GetLocked(ChainInfo chain, string[] addresses)
+    {
+        Exception ex = null;
+        foreach (var endpoint in chain.Query.CurrentEndpoints)
+        {
+            try
+            {
+                var data = (chain.ChainId, await GetLocked(new Web3(endpoint), addresses));
+                _logger.LogInformation($"Locked Tokens for {chain.Chain} is {data.Item2}");
+
+                return data;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+                ex = e;
+            }
+        }
+
+        ExceptionDispatchInfo.Throw(ex);
+        throw ex;
+    }
+
+    private StakeAmounts[] _stakedAmounts;
+
+    Stopwatch stopwatch = Stopwatch.StartNew();
+    Task _stakeAmountsTask = Task.CompletedTask;
+
+    private async Task<StakeAmounts[]> GetStakeAmounts()
+    {
+        if (_stakedAmounts is null || stopwatch.ElapsedMilliseconds > 10 * 60 * 1_000)
+        {
+            stopwatch.Restart();
+
+            var prevTask = _stakeAmountsTask;
+
+            if (!prevTask.IsCompleted)
+            {
+                await prevTask;
+            }
+            else
+            {
+                _stakeAmountsTask = RegenerateStakeAmounts();
+                if (_stakedAmounts is null)
+                {
+                    await _stakeAmountsTask;
+                }
+            }
+        }
+
+        return _stakedAmounts;
+    }
+
+    private async Task RegenerateStakeAmounts()
+    {
+        var tasks = new List<Task<(int ChainId, decimal Locked)>>();
+        foreach (var chain in _chains)
+        {
+            tasks.Add(GetLocked(chain, _addresses));
+        }
+
+        await Task.WhenAll(tasks);
+
+        var amounts = new List<StakeAmounts>();
+        foreach (var item in tasks)
+        {
+            (int ChainId, decimal Locked) = await item;
+            amounts.Add(new StakeAmounts { id = ChainId.ToString("0"), amount = (double)Locked });
+        }
+
+        _stakedAmounts = amounts.ToArray();
+    }
+
     public Stats(ApiConfig config, ILogger<BlockchainQuery> logger)
     {
         _logger = logger;
+        _config = config;
 
         var speedyKey = config.MoralisConfiguration.SpeedyNodeKey;
 
@@ -494,9 +747,9 @@ public class Stats : IHostedService
             config,
             eth,
             currentEndpoints: new[] {
+                "https://rpc.ankr.com/eth",
                 "https://mainnet.infura.io/v3/00df9e302326440a8c6c35255a17c265",
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/eth/mainnet",
-                "https://rpc.ankr.com/eth",
                 "https://main-light.eth.linkpool.io",
                 "https://eth-rpc.gateway.pokt.network",
                 "https://mainnet-nethermind.blockscout.com",
@@ -560,15 +813,58 @@ public class Stats : IHostedService
             archiveEndpoints: new string[]
             {
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/fantom/mainnet",
-                "https://rpc.ankr.com/fantom"
+                "https://rpc.ankr.com/fantom",
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
             everSwapAddress: "0x557E769FC676a07fd04af671037EFfa218DB3F4E",
             logger: logger);
+
+        _chains = new ChainInfo[]
+        { 
+            new ()
+            {
+                Query = _bscQuery,
+                Chain = "bsc", 
+                ChainId = 56, 
+                Stats = bsc
+            },
+            new ()
+            {
+                Query = _ethQuery,
+                Chain = "eth",
+                ChainId = 1,
+                Stats = eth
+            },
+            new ()
+            {
+                Query = _polyQuery,
+                Chain = "poly",
+                ChainId = 137,
+                Stats = poly
+            },
+            new ()
+            {
+                Query = _ftmQuery,
+                Chain = "ftm",
+                ChainId = 250,
+                Stats = ftm
+            },
+            new ()
+            {
+                Query = _avaxQuery,
+                Chain = "avx",
+                ChainId = 43114,
+                Stats = avax
+            }
+        };
+
+        _loadHolderListTask = LoadHolderList();
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
+        await _loadHolderListTask;
+
         BscQueryTask = Query(_bscQuery);
         EthQueryTask = Query(_ethQuery);
         PolyQueryTask = Query(_polyQuery);
@@ -576,7 +872,6 @@ public class Stats : IHostedService
         AvaxQueryTask = Query(_avaxQuery);
         SerializeQueryTask = Serialize();
         CalculateTask = Calculate();
-        return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

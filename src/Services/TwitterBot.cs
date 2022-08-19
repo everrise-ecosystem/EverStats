@@ -131,15 +131,18 @@ public class TwitterBot : IHostedService
 
         //imageData = File.ReadAllBytes(@"C:\Users\thund\OneDrive\Pictures\coin\binance.jpg");
 
-        if (imageData != null)
+        if (_config.SendTweets)
         {
-            var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
-            var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
-            await twitterContext.TweetMediaAsync(tweet, mediaIds);
-        }
-        else
-        {
-            await twitterContext.TweetAsync(tweet);
+            if (imageData != null)
+            {
+                var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
+                var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
+                await twitterContext.TweetMediaAsync(tweet, mediaIds);
+            }
+            else
+            {
+                await twitterContext.TweetAsync(tweet);
+            }
         }
 
         Console.WriteLine(tweet);
