@@ -9,8 +9,10 @@ var config = ApiConfig.GetConfiguration();
 builder.Services
     .AddSingleton<ApiConfig>(config)
     .AddSingleton<HolderList>()
-    .AddSingleton<Stats>()
-    .AddHostedService(provider => provider.GetRequiredService<Stats>())
+    .AddSingleton<QueryTime>()
+    .AddHostedService(provider => provider.GetRequiredService<QueryTime>())
+    //.AddSingleton<Stats>()
+    //.AddHostedService(provider => provider.GetRequiredService<Stats>())
     .AddHostedService<TwitterBot>()
     ;
 
@@ -27,12 +29,12 @@ if (!app.Environment.IsDevelopment())
 } else
 {
     config.StoreInDb = false;
-    config.SendTweets = true;
+    config.SendTweets = false;
 }
 
 app.UseHttpsRedirection();
 
-app.UseStats();
+//app.UseStats();
 //app.UseCoinPricing();
 app.UseStaticFiles();
 

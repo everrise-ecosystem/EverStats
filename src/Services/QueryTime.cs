@@ -1,38 +1,26 @@
 ﻿// Copyright (c) EverRise Pte Ltd. All rights reserved.
 
-using System.IO.Compression;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 
 using EverStats.Config;
 using EverStats.Data;
-
-using Nethereum.Signer;
 using Nethereum.Web3;
 using Contracts.Contracts.EverRise;
-
-using Sylvan.Data.Csv;
 using System.Runtime.ExceptionServices;
-using System.Net.Sockets;
-using System.Diagnostics;
-using System.Reflection;
-using Azure.Storage.Blobs;
 using Microsoft.Data.SqlClient;
-using Org.BouncyCastle.Asn1.X509;
+using Nethereum.RPC.Eth.DTOs;
+using System.Data;
+using Nethereum.Signer;
 
 namespace EverStats.Services;
 public class QueryTime : IHostedService
 {
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
-    private readonly static JsonSerializerOptions _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     private readonly ILogger<BlockchainQuery> _logger;
     private readonly ApiConfig _config;
     private readonly HolderList _holders;
     private CancellationTokenSource _cts = new CancellationTokenSource();
-    private SemaphoreSlim _calcSemaphore = new SemaphoreSlim(0);
-    private SemaphoreSlim _serializeSemaphore = new SemaphoreSlim(0);
-    private SemaphoreSlim _dataSemaphore = new SemaphoreSlim(0);
 
     private HttpClient _stakingClient = GetHttpClient();
 
@@ -42,81 +30,16 @@ public class QueryTime : IHostedService
     private BlockchainQuery _ftmQuery;
     private BlockchainQuery _avaxQuery;
 
-    public BlockchainStats unified { get; set; } = new BlockchainStats("unified");
-    public BlockchainStats bsc { get; set; } = new BlockchainStats("bsc");
-    public BlockchainStats eth { get; set; } = new BlockchainStats("eth");
-    public BlockchainStats poly { get; set; } = new BlockchainStats("polygon");
-    public BlockchainStats ftm { get; set; } = new BlockchainStats("fantom");
-    public BlockchainStats avax { get; set; } = new BlockchainStats("avalanche");
 
-    public string Json = "{}";
-    public byte[] JsonBytes = Array.Empty<byte>();
-    public byte[] JsonBytesBr = Array.Empty<byte>();
-    public byte[] JsonBytesGzip = Array.Empty<byte>();
-
-    public async Task<decimal> QueryCoinPrice(string chain, int blockNumber)
+    private async Task<int> QueryBlock(string chain, DateTimeOffset date)
     {
-        var stats = await (chain switch
-        {
-            "eth" => _ethQuery.QueryHistoricStats(blockNumber),
-            "bsc" => _ethQuery.QueryHistoricStats(blockNumber),
-            "poly" => _ethQuery.QueryHistoricStats(blockNumber),
-            "ftm" => _ethQuery.QueryHistoricStats(blockNumber),
-            "avax" => _ethQuery.QueryHistoricStats(blockNumber),
-            _ => null
-        });
-
-        return stats.coinPriceStableValue;
+        var timeStamp = date.ToUnixTimeSeconds();
+        var response = await _stakingClient.GetAsync($"https://deep-index.moralis.io/api/v2/dateToBlock?chain={chain}&date={timeStamp:0}");
+        response.EnsureSuccessStatusCode();
+        var data = await response.Content.ReadAsStringAsync();
+        var nearest = JsonSerializer.Deserialize<NearestBlock>(data);
+        return nearest.block;
     }
-
-    internal Task DataReceived()
-    {
-        return _dataSemaphore.WaitAsync();
-    }
-
-    private Task BscQueryTask = Task.CompletedTask;
-    private Task EthQueryTask = Task.CompletedTask;
-    private Task PolyQueryTask = Task.CompletedTask;
-    private Task FtmQueryTask = Task.CompletedTask;
-    private Task AvaxQueryTask = Task.CompletedTask;
-    private Task SerializeQueryTask = Task.CompletedTask;
-    private Task CalculateTask = Task.CompletedTask;
-
-    private async Task Serialize()
-    {
-        while (!_cts.IsCancellationRequested)
-        {
-            await _serializeSemaphore.WaitAsync();
-
-            Json = JsonSerializer.Serialize(this, _options);
-            JsonBytes = Encoding.UTF8.GetBytes(Json);
-
-            {
-                var memoryStream = new MemoryStream();
-                using (var compression = new BrotliStream(memoryStream, CompressionLevel.Optimal, leaveOpen: true))
-                {
-                    compression.Write(JsonBytes);
-                }
-
-                memoryStream.Seek(0, SeekOrigin.Begin);
-
-                JsonBytesBr = memoryStream.ToArray();
-            }
-
-            {
-                var memoryStream = new MemoryStream();
-                using (var compression = new GZipStream(memoryStream, CompressionLevel.Optimal, leaveOpen: true))
-                {
-                    compression.Write(JsonBytes);
-                }
-
-                memoryStream.Seek(0, SeekOrigin.Begin);
-
-                JsonBytesGzip = memoryStream.ToArray();
-            }
-        }
-    }
-
 
     private static HttpClient GetHttpClient()
     {
@@ -125,97 +48,71 @@ public class QueryTime : IHostedService
         return client;
     }
 
-    private async Task Calculate()
+    private async Task<(BlockchainSample unified, BlockchainSample eth, BlockchainSample bsc, BlockchainSample poly, BlockchainSample ftm, BlockchainSample avax)> 
+        Calculate(DateTime date, bool storeInDb)
     {
-        while (!_cts.IsCancellationRequested)
+        var holders = await _holders.GetHolderList();
+
+        var ethBlock = (ulong)await QueryBlock("eth", date);
+        var ethTask = Query(_ethQuery, ethBlock);
+
+        var bscBlock = (ulong)await QueryBlock("bsc", date);
+        var bscTask = Query(_bscQuery, bscBlock);
+
+        var polyBlock = (ulong)await QueryBlock("polygon", date);
+        var polyTask = Query(_polyQuery, polyBlock);
+
+
+        var avaxBlock = (ulong)await QueryBlock("avalanche", date);
+        var avaxTask = Query(_avaxQuery, avaxBlock);
+
+        var ftmBlock = (ulong)await QueryBlock("fantom", date);
+        
+        Task<BlockchainSample> ftmTask;
+        try
         {
-            await _calcSemaphore.WaitAsync();
-
-            try
-            {
-                var stakedAmounts = await GetStakeAmounts();
-                for (int i = 0; i < stakedAmounts.Length; i++)
-                {
-                    var staked = stakedAmounts[i];
-                    BlockchainSample quatities = null;
-                    BlockchainSample history24hrs = null;
-                    BlockchainSample history48hrs = null;
-                    BlockchainSample history7day = null;
-                    BlockchainSample history14day = null;
-                    switch (staked.id)
-                    {
-                        case "1":
-                            quatities = eth.current;
-                            history24hrs = eth.history24hrs;
-                            history48hrs = eth.history48hrs;
-                            history7day = eth.history7day;
-                            history14day = eth.history14day;
-                            break;
-                        case "56":
-                            quatities = bsc.current;
-                            history24hrs = bsc.history24hrs;
-                            history48hrs = bsc.history48hrs;
-                            history7day = bsc.history7day;
-                            history14day = bsc.history14day;
-                            break;
-                        case "137":
-                            quatities = poly.current;
-                            history24hrs = poly.history24hrs;
-                            history48hrs = poly.history48hrs;
-                            history7day = poly.history7day;
-                            history14day = poly.history14day;
-                            break;
-                        case "250":
-                            quatities = ftm.current;
-                            history24hrs = ftm.history24hrs;
-                            history48hrs = ftm.history48hrs;
-                            history7day = ftm.history7day;
-                            history14day = ftm.history14day;
-                            break;
-                        case "43114":
-                            quatities = avax.current;
-                            history24hrs = avax.history24hrs;
-                            history48hrs = avax.history48hrs;
-                            history7day = avax.history7day;
-                            history14day = avax.history14day;
-                            break;
-                    }
-
-                    quatities.stakedValue = (decimal)staked.amount;
-                    quatities.aveMultiplierValue = quatities.veAmountValue / quatities.stakedValue;
-                    quatities.usdStakedValue = quatities.stakedValue * quatities.tokenPriceStableValue;
-
-                    if (history24hrs != null)
-                    {
-                        history24hrs.stakedValue = quatities.stakedValue;
-                    }
-                    if (history48hrs != null)
-                    {
-                        history48hrs.stakedValue = quatities.stakedValue;
-                    }
-                    if (history7day != null)
-                    {
-                        history7day.stakedValue = quatities.stakedValue;
-                    }
-                    if (history14day != null)
-                    {
-                        history14day.stakedValue = quatities.stakedValue;
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
-                _stakingClient.Dispose();
-                _stakingClient = GetHttpClient();
-            }
-
-            if (await RecalculateUnified())
-            {
-                _serializeSemaphore.Release();
-            }
+            ftmTask = Query(_ftmQuery, ftmBlock);
+            await ftmTask;
         }
+        catch (Exception ex)
+        {
+            ftmBlock = (ulong)await QueryBlock("fantom", date.AddSeconds(-30));
+            ftmTask = Query(_ftmQuery, ftmBlock);
+            await ftmTask;
+        }
+
+
+        await Task.WhenAll(ethTask, bscTask, polyTask, ftmTask, avaxTask);
+
+        var eth = await ethTask;
+        var bsc = await bscTask;
+        var poly = await polyTask;
+        var avax = await avaxTask;
+        var ftm = await ftmTask;
+
+        await Task.WhenAll(
+            SetLocked(1, eth, holders, _ethQuery.ArchiveEndpoints, ethBlock),
+            SetLocked(56, bsc, holders, _bscQuery.ArchiveEndpoints, bscBlock),
+            SetLocked(137, poly, holders, _polyQuery.ArchiveEndpoints, polyBlock),
+            SetLocked(250, ftm, holders, _ftmQuery.ArchiveEndpoints, ethBlock),
+            SetLocked(43114, avax, holders, _avaxQuery.ArchiveEndpoints, ethBlock));
+
+        var unified = Recalculate(eth, bsc, poly, ftm, avax);
+
+        if (storeInDb)
+        {
+            await StoreInDb(unified, eth, bsc, poly, ftm, avax);
+        }
+
+        return (unified, eth, bsc, poly, ftm, avax);
+    }
+
+    private async Task SetLocked(int chainId, BlockchainSample quatities, string[] addresses, EndPoints endpoints, ulong blockNumber)
+    {
+        (_, var amount) = await GetLocked(chainId, addresses, endpoints, blockNumber);
+        quatities.stakedValue = (decimal)amount;
+        quatities.aveMultiplierValue = quatities.veAmountValue / quatities.stakedValue;
+        quatities.usdStakedValue = quatities.stakedValue * quatities.tokenPriceStableValue;
     }
 
     public class StakeAmounts
@@ -224,81 +121,26 @@ public class QueryTime : IHostedService
         public double amount { get; set; }
     }
 
-    private async Task<bool> RecalculateUnified()
-    {
-        var sample = Recalculate(bsc.current, eth.current, poly.current, ftm.current, avax.current);
-        if (sample is null) return false;
-        unified.current = sample;
-
-        if (_config.StoreInDb) {
-            await StoreInDb();
-        }
-
-        sample = Recalculate(bsc.history24hrs, eth.history24hrs, poly.history24hrs, ftm.history24hrs, avax.history24hrs);
-        if (sample is not null)
-        {
-            unified.history24hrs = sample;
-        }
-
-        if (bsc.history48hrs != null && eth.history48hrs != null && poly.history48hrs != null && ftm.history48hrs != null && avax.history48hrs != null)
-        {
-            sample = Recalculate(bsc.history48hrs, eth.history48hrs, poly.history48hrs, ftm.history48hrs, avax.history48hrs);
-            if (sample is not null)
-            {
-                unified.history48hrs = sample;
-            }
-        }
-
-        if (bsc.history7day != null && eth.history7day != null && poly.history7day != null && ftm.history7day != null && avax.history7day != null)
-        {
-            sample = Recalculate(bsc.history7day, eth.history7day, poly.history7day, ftm.history7day, avax.history7day);
-            if (sample is not null)
-            {
-                unified.history7day = sample;
-            }
-        }
-
-        if (bsc.history14day != null && eth.history14day != null && poly.history14day != null && ftm.history14day != null && avax.history14day != null)
-        {
-            sample = Recalculate(bsc.history14day, eth.history14day, poly.history14day, ftm.history14day, avax.history14day);
-            if (sample is not null)
-            {
-                unified.history14day = sample;
-            }
-        }
-
-        bsc.CreateStringRepresentations();
-        eth.CreateStringRepresentations();
-        poly.CreateStringRepresentations();
-        ftm.CreateStringRepresentations();
-        avax.CreateStringRepresentations();
-        unified.CreateStringRepresentations();
-
-        if (_dataSemaphore.CurrentCount == 0)
-        {
-            _dataSemaphore.Release();
-        }
-
-        return true;
-    }
-
-    private async Task StoreInDb()
+    private async Task StoreInDb(BlockchainSample unified, BlockchainSample eth, BlockchainSample bsc, BlockchainSample poly, BlockchainSample ftm, BlockchainSample avax)
     {
         using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
         await conn.OpenAsync();
 
-        await StoreInDb(chainId: 0, unified.current, conn);
-        foreach (var chain in _chains)
-        {
-            await StoreInDb(chain.ChainId, chain.Stats.current, conn);
-        }
+        await StoreInDb(chainId: 0, unified, conn);
+
+        await StoreInDb(chainId: 1, eth, conn);
+        await StoreInDb(chainId: 56, bsc, conn);
+        await StoreInDb(chainId: 137, poly, conn);
+        await StoreInDb(chainId: 250, ftm, conn);
+        await StoreInDb(chainId: 43114, avax, conn);
     }
 
     private async Task StoreInDb(int chainId, BlockchainSample sample, SqlConnection conn)
     {
         try
         {
-            if (sample.date != sample.lastStored) {
+            if (sample.date != sample.lastStored)
+            {
                 using var cmd = new SqlCommand(@"
             INSERT INTO chain_time_data
                 ([date], [chainId],
@@ -308,7 +150,8 @@ public class QueryTime : IHostedService
                 [burnPercent], [totalSupply], [everSwap], [usdReservesCoinBalance], [usdReservesTokenBalance], [usdReservesBalance], 
                 [usdLiquidityToken], [usdLiquidityCoin], [usdStaked], [usdRewards], [usdVolumeBuy], 
                 [usdVolumeSell], [usdVolumeTrade], [usdEverSwap], [supplyOnChainPercent], [stakedOfTotalSupplyPercent], 
-                [stakedOfOnChainPercent], [stakedOfTotalStakedPercent], [veRiseOnChainPercent])
+                [stakedOfOnChainPercent], [stakedOfTotalStakedPercent], [veRiseOnChainPercent], [unclaimedTokenBalance], [usdUnclaimedTokenBalance],
+                [stakesCount], [mementosCount])
             VALUES
                 (@date, @chainId, 
                 @reservesCoinBalance, @reservesTokenBalance, @liquidityToken, @liquidityCoin, @veAmount, @staked, 
@@ -317,7 +160,8 @@ public class QueryTime : IHostedService
                 @burnPercent, @totalSupply, @everSwap, @usdReservesCoinBalance, @usdReservesTokenBalance, @usdReservesBalance, 
                 @usdLiquidityToken, @usdLiquidityCoin, @usdStaked, @usdRewards, @usdVolumeBuy, 
                 @usdVolumeSell, @usdVolumeTrade, @usdEverSwap, @supplyOnChainPercent, @stakedOfTotalSupplyPercent, 
-                @stakedOfOnChainPercent, @stakedOfTotalStakedPercent, @veRiseOnChainPercent)", conn);
+                @stakedOfOnChainPercent, @stakedOfTotalStakedPercent, @veRiseOnChainPercent, @unclaimedTokenBalance, @usdUnclaimedTokenBalance,
+                @stakesCount, @mementosCount)", conn);
 
                 var param = cmd.Parameters;
                 param.AddWithValue("@date", sample.date);
@@ -361,6 +205,10 @@ public class QueryTime : IHostedService
                 param.AddWithValue("@stakedOfOnChainPercent", sample.stakedOfOnChainPercentValue);
                 param.AddWithValue("@stakedOfTotalStakedPercent", sample.stakedOfTotalStakedPercentValue);
                 param.AddWithValue("@veRiseOnChainPercent", sample.veRiseOnChainPercentValue);
+                param.AddWithValue("@unclaimedTokenBalance", sample.unclaimedTokenBalanceValue);
+                param.AddWithValue("@usdUnclaimedTokenBalance", sample.usdUnclaimedTokenBalanceValue);
+                param.AddWithValue("@stakesCount", sample.stakesCountValue);
+                param.AddWithValue("@mementosCount", sample.mementosCountValue);
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -442,12 +290,16 @@ public class QueryTime : IHostedService
         decimal marketCapValue = 0m;
         decimal holdersValue = 0m;
         decimal veAmountValue = 0m;
+        decimal unclaimedTokenBalanceValue = 0m;
 
         decimal usdLiquidityCoinValue = 0m;
         decimal usdEverSwapValue = 0m;
         decimal usdReservesCoinBalanceValue = 0m;
         decimal usdReservesTokenBalanceValue = 0m;
         decimal usdReservesBalanceValue = 0m;
+        decimal usdUnclaimedTokenBalanceValue = 0m;
+        decimal stakesCountValue = 0m;
+        decimal mementosCountValue = 0m;
 
         for (var i = 0; i < samples.Length; i++)
         {
@@ -475,6 +327,10 @@ public class QueryTime : IHostedService
             usdReservesTokenBalanceValue += chain.usdReservesTokenBalanceValue;
             usdReservesCoinBalanceValue += chain.usdReservesCoinBalanceValue;
             usdReservesBalanceValue += chain.usdReservesBalanceValue;
+            unclaimedTokenBalanceValue += chain.unclaimedTokenBalanceValue;
+            usdUnclaimedTokenBalanceValue += chain.usdUnclaimedTokenBalanceValue;
+            stakesCountValue += chain.stakesCountValue;
+            mementosCountValue += chain.mementosCountValue;
         }
 
         decimal usdStakedValue = stakedValue * tokenPriceStableValue;
@@ -502,7 +358,6 @@ public class QueryTime : IHostedService
         {
             timeStampValue = timeStampValue,
             date = (DateTime.UnixEpoch + TimeSpan.FromSeconds((int)timeStampValue)).ToString("s"),
-            lastStored = unified?.current?.lastStored,
             reservesCoinBalanceValue = reservesCoinBalanceValue,
             reservesTokenBalanceValue = reservesTokenBalanceValue,
             liquidityTokenValue = liquidityTokenValue,
@@ -544,7 +399,11 @@ public class QueryTime : IHostedService
 
             usdReservesCoinBalanceValue = usdReservesCoinBalanceValue,
             usdReservesTokenBalanceValue = usdReservesTokenBalanceValue,
-            usdReservesBalanceValue = usdReservesBalanceValue
+            usdReservesBalanceValue = usdReservesBalanceValue,
+            unclaimedTokenBalanceValue = unclaimedTokenBalanceValue,
+            usdUnclaimedTokenBalanceValue = usdUnclaimedTokenBalanceValue,
+            stakesCountValue = stakesCountValue,
+            mementosCountValue = mementosCountValue
         };
 
         sample.CreateStringRepresentations();
@@ -552,57 +411,38 @@ public class QueryTime : IHostedService
         return sample;
     }
 
-    private async Task Query(BlockchainQuery query)
+    private async Task<BlockchainSample> Query(BlockchainQuery query, ulong blockNumber)
     {
-        while (!_cts.IsCancellationRequested)
-        {
-            await query.GetData();
-
-            if (_calcSemaphore.CurrentCount == 0)
-            {
-                _calcSemaphore.Release();
-            }
-
-            await Task.Delay(TimeSpan.FromSeconds(15), _cts.Token);
-        }
+        return await query.GetData(blockNumber);
     }
 
-    struct ChainInfo
-    {
-        public BlockchainStats Stats;
-        public BlockchainQuery Query;
-        public string Chain;
-        public int ChainId;
-    }
-
-    static ChainInfo[] _chains;
-
-    private static async Task<decimal> GetLocked(Web3 web3, string[] addresses)
+    private static async Task<decimal> GetLocked(Web3 web3, string[] addresses, ulong blockNumber)
     {
         var everRise = new EverRiseService(web3, "0xC17c30e98541188614dF99239cABD40280810cA3");
 
-        var lockedAmount = await everRise.GetAmountLockedUsingMultiCallAsync(addresses, numberOfCallsPerRequest: 2000);
+        var lockedAmount = await everRise.GetAmountLockedUsingMultiCallAsync(addresses, numberOfCallsPerRequest: 2000, block: new BlockParameter(blockNumber));
 
         var totalStaked = lockedAmount.Select(x => Nethereum.Util.UnitConversion.Convert.FromWei(x)).Sum();
 
         return totalStaked;
     }
 
-    private async Task<(int ChainId, decimal Locked)> GetLocked(ChainInfo chain, string[] addresses)
+    private async Task<(int ChainId, decimal Locked)> GetLocked(int chainId, string[] addresses, EndPoints endpoints, ulong blockNumber)
     {
         Exception ex = null;
-        foreach (var endpoint in chain.Query.CurrentEndpoints)
+        foreach (var endpoint in endpoints)
         {
             try
             {
-                var data = (chain.ChainId, await GetLocked(new Web3(endpoint), addresses));
-                _logger.LogInformation($"Locked Tokens for {chain.Chain} is {data.Item2}");
+                var data = (chainId, await GetLocked(new Web3(endpoint), addresses, blockNumber));
+                _logger.LogInformation($"Locked Tokens for {chainId} is {data.Item2}");
 
                 return data;
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
+                endpoints.FailedEndpoint(endpoint);
                 ex = e;
             }
         }
@@ -611,69 +451,19 @@ public class QueryTime : IHostedService
         throw ex;
     }
 
-    private StakeAmounts[] _stakedAmounts;
-
-    Stopwatch stopwatch = Stopwatch.StartNew();
-    Task _stakeAmountsTask = Task.CompletedTask;
-
-    private async Task<StakeAmounts[]> GetStakeAmounts()
-    {
-        if (_stakedAmounts is null || stopwatch.ElapsedMilliseconds > 10 * 60 * 1_000)
-        {
-            stopwatch.Restart();
-
-            var prevTask = _stakeAmountsTask;
-
-            if (!prevTask.IsCompleted)
-            {
-                await prevTask;
-            }
-            else
-            {
-                _stakeAmountsTask = RegenerateStakeAmounts();
-                if (_stakedAmounts is null)
-                {
-                    await _stakeAmountsTask;
-                }
-            }
-        }
-
-        return _stakedAmounts;
-    }
-
-    private async Task RegenerateStakeAmounts()
-{
-        var addresses = await _holders.GetHolderList();
-
-        var tasks = new List<Task<(int ChainId, decimal Locked)>>();
-        foreach (var chain in _chains)
-        {
-            tasks.Add(GetLocked(chain, addresses));
-        }
-
-        await Task.WhenAll(tasks);
-
-        var amounts = new List<StakeAmounts>();
-        foreach (var item in tasks)
-        {
-            (int ChainId, decimal Locked) = await item;
-            amounts.Add(new StakeAmounts { id = ChainId.ToString("0"), amount = (double)Locked });
-        }
-
-        _stakedAmounts = amounts.ToArray();
-    }
-
     public QueryTime(ApiConfig config, HolderList holders, ILogger<BlockchainQuery> logger)
     {
         _logger = logger;
         _config = config;
         _holders = holders;
 
+        _stakingClient.DefaultRequestHeaders.Add("X-API-Key", config.MoralisConfiguration.Web3ApiKey);
+
         var speedyKey = config.MoralisConfiguration.SpeedyNodeKey;
 
-        _bscQuery = new BlockchainQuery(
+        _bscQuery = new BlockchainQuery("bsc",
             config,
-            bsc,
+            null,
             currentEndpoints: new[] {
                 "https://bsc-dataseed.binance.org/",
                 "https://rpc.ankr.com/bsc",
@@ -700,9 +490,9 @@ public class QueryTime : IHostedService
             everSwapAddress: "0x71B089280237672837a23d3c2cC6cFC43424e08E",
             logger: logger);
 
-        _ethQuery = new BlockchainQuery(
+        _ethQuery = new BlockchainQuery("eth",
             config,
-            eth,
+            null,
             currentEndpoints: new[] {
                 "https://rpc.ankr.com/eth",
                 "https://mainnet.infura.io/v3/00df9e302326440a8c6c35255a17c265",
@@ -724,9 +514,9 @@ public class QueryTime : IHostedService
             everSwapAddress: "0x8dc9b4e0a5688fa4869d438d8720c9621fa777dc",
             logger: logger);
 
-        _polyQuery = new BlockchainQuery(
+        _polyQuery = new BlockchainQuery("polygon",
             config,
-            poly,
+            null,
             currentEndpoints: new[] {
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/polygon/mainnet",
                 "https://rpc-mainnet.maticvigil.com/v1/9f9c72670ae63ead023c7cb64594c31c021e7e14",
@@ -742,13 +532,16 @@ public class QueryTime : IHostedService
             everSwapAddress: "0xa3C14Dfb714b9a7827393DC282ee3027e39B5557",
             logger: logger);
 
-        _avaxQuery = new BlockchainQuery(
+        _avaxQuery = new BlockchainQuery("avalanche",
             config,
-            avax,
+            null,
             currentEndpoints: new[] {
-                "https://api.avax.network/ext/bc/C/rpc",
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/avalanche/mainnet",
+                "https://rpc.ankr.com/avalanche",
+                "https://ava-mainnet.public.blastapi.io/ext/bc/C/rpc",
+                "https://avalancheapi.terminet.io/ext/bc/C/rpc",
                 "https://rpc.ankr.com/avalanche-c",
+                "https://api.avax.network/ext/bc/C/rpc",
+                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/avalanche/mainnet"
             },
             archiveEndpoints: new string[]
             {
@@ -758,9 +551,9 @@ public class QueryTime : IHostedService
             everSwapAddress: "0x6d9fA4Fb73942A416d89ad3f7553eFefF9b3F74B",
             logger: logger);
 
-        _ftmQuery = new BlockchainQuery(
+        _ftmQuery = new BlockchainQuery("fantom",
             config,
-            ftm,
+            null,
             currentEndpoints: new[] {
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/fantom/mainnet",
                 "https://rpcapi.fantom.network/",
@@ -771,62 +564,49 @@ public class QueryTime : IHostedService
             {
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/fantom/mainnet",
                 "https://rpc.ankr.com/fantom",
+                "https://fantom-mainnet.public.blastapi.io",
+                "https://rpc.ftm.tools",
+                "https://rpcapi.fantom.network",
+                "https://rpc2.fantom.network",
+                "https://rpc.fantom.network",
+                "https://rpc3.fantom.network"
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
             everSwapAddress: "0x557E769FC676a07fd04af671037EFfa218DB3F4E",
             logger: logger);
-
-        _chains = new ChainInfo[]
-        { 
-            new ()
-            {
-                Query = _bscQuery,
-                Chain = "bsc", 
-                ChainId = 56, 
-                Stats = bsc
-            },
-            new ()
-            {
-                Query = _ethQuery,
-                Chain = "eth",
-                ChainId = 1,
-                Stats = eth
-            },
-            new ()
-            {
-                Query = _polyQuery,
-                Chain = "poly",
-                ChainId = 137,
-                Stats = poly
-            },
-            new ()
-            {
-                Query = _ftmQuery,
-                Chain = "ftm",
-                ChainId = 250,
-                Stats = ftm
-            },
-            new ()
-            {
-                Query = _avaxQuery,
-                Chain = "avx",
-                ChainId = 43114,
-                Stats = avax
-            }
-        };
     }
 
+
+    public async Task<DateTime> GetOldestDataDate()
+    {
+        using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
+        using var cmd = new SqlCommand(@"SELECT earliestDate = Min([date]) FROM chain_time_data", conn);
+
+        await conn.OpenAsync();
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        var data = new List<ChainData>();
+        while (await reader.ReadAsync())
+        {
+            return reader.GetDateTime("earliestDate");
+        }
+
+        throw new Exception("No Data");
+    }
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await _holders.GetHolderList();
+        var date = await GetOldestDataDate();
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            date = date.AddHours(-1);
 
-        BscQueryTask = Query(_bscQuery);
-        EthQueryTask = Query(_ethQuery);
-        PolyQueryTask = Query(_polyQuery);
-        FtmQueryTask = Query(_ftmQuery);
-        AvaxQueryTask = Query(_avaxQuery);
-        SerializeQueryTask = Serialize();
-        CalculateTask = Calculate();
+            var result = await Calculate(date, storeInDb: true);
+
+            Console.WriteLine($"block at {result.unified.date:dddd dd MMM yyyy HH:mm:ss}");
+
+            await Task.Delay(30_000);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

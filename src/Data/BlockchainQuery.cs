@@ -6,6 +6,8 @@ using System.Text.Json;
 using System.Text;
 using System.Net.Http.Headers;
 using EverStats.Config;
+using System.Data;
+using EverStats.Services;
 
 namespace EverStats.Data;
 
@@ -17,19 +19,23 @@ public class BlockchainQuery
     private static string s_distributorRaw = "3776B8C349BC9Af202E4D98Af163D59cA56d2fC5";
     private static string s_distributor = "0x" + s_distributorRaw;
     private static string s_veRiseContract = "0xDbA7b24257fC6e397cB7368B4BC922E944072f1b";
+    private static string s_nftRiseAddressRaw = "23cD2E6b283754Fd2340a75732f9DdBb5d11807e";
+    private static string s_nftRiseAddress = "0x" + s_nftRiseAddressRaw;
+    private static string s_memeRiseAddressRaw = "1C57a5eE9C5A90C9a5e31B5265175e0642b943b1";
+    private static string s_memeRiseAddress = "0x" + s_memeRiseAddressRaw;
     private readonly static JsonSerializerOptions s_options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
 
-    public string[] CurrentEndpoints { get; }
-    private readonly string[] _historyEndpoints;
+    public EndPoints CurrentEndpoints { get; }
+    public EndPoints ArchiveEndpoints { get; }
     private readonly string _statsContractAddress;
     private readonly string _everSwapAddress;
-
     private HttpClient _nodeClient;
     private HttpClient _web3Client;
 
     private decimal _lastBlock = 0;
     private BlockchainStats _stats;
+    private readonly string _chain;
     private ApiConfig _config;
 
     private DateTimeOffset _lastHistoryCheck24hrs;
@@ -46,11 +52,12 @@ public class BlockchainQuery
 
     private ILogger<BlockchainQuery> _logger;
 
-    public BlockchainQuery(ApiConfig config, BlockchainStats stats, string[] currentEndpoints, string[] archiveEndpoints, string statsContractAddress, string everSwapAddress, ILogger<BlockchainQuery> logger)
+    public BlockchainQuery(string chain, ApiConfig config, BlockchainStats stats, EndPoints currentEndpoints, EndPoints archiveEndpoints, string statsContractAddress, string everSwapAddress, ILogger<BlockchainQuery> logger)
     {
+        _chain = chain;
         _config = config;
         CurrentEndpoints = currentEndpoints;
-        _historyEndpoints = archiveEndpoints;
+        ArchiveEndpoints = archiveEndpoints;
         _statsContractAddress = statsContractAddress;
         _everSwapAddress = everSwapAddress;
         _stats = stats;
@@ -74,6 +81,12 @@ public class BlockchainQuery
         History48hr,
         History7day,
         History14day,
+    }
+
+
+    public async Task<BlockchainSample> GetData(ulong blockNumber)
+    {
+        return await QueryStats(ArchiveEndpoints, "0x" + NumberToHex((int)blockNumber));
     }
 
     public async Task GetData()
@@ -155,7 +168,7 @@ public class BlockchainQuery
                 var blockNumber = await QueryBlock(queryDate);
                 if (blockNumber == 0) throw new InvalidDataException("Zero block number");
 
-                historyData = await QueryStats(_historyEndpoints, "0x" + NumberToHex(blockNumber));
+                historyData = await QueryStats(ArchiveEndpoints, "0x" + NumberToHex(blockNumber));
             }
 
             if (historyData is not null)
@@ -202,7 +215,7 @@ public class BlockchainQuery
                     break;
             }
 
-            Console.WriteLine($"{_stats.Chain} {period} : {ex.Message}");
+            Console.WriteLine($"{_chain} {period} : {ex.Message}");
             _web3Client?.Dispose();
             _web3Client = GetHttpClient();
             _web3Client.DefaultRequestHeaders.Add("X-API-Key", _config.MoralisConfiguration.Web3ApiKey);
@@ -214,7 +227,8 @@ public class BlockchainQuery
     private async Task<int> QueryBlock(DateTimeOffset date)
     {
         var timeStamp = date.ToUnixTimeSeconds();
-        var response = await _web3Client.GetAsync($"https://deep-index.moralis.io/api/v2/dateToBlock?chain={_stats.Chain}&date={timeStamp:0}");
+        var response = await _web3Client.GetAsync($"https://deep-index.moralis.io/api/v2/dateToBlock?chain={_chain}&date={timeStamp:0}");
+        response.EnsureSuccessStatusCode();
         var data = await response.Content.ReadAsStringAsync();
         var nearest = JsonSerializer.Deserialize<NearestBlock>(data);
         return nearest.block;
@@ -238,10 +252,10 @@ public class BlockchainQuery
 
     public Task<BlockchainSample?> QueryHistoricStats(int blockNumber)
     {
-        return QueryStats(_historyEndpoints, "0x" + NumberToHex(blockNumber));
+        return QueryStats(ArchiveEndpoints, "0x" + NumberToHex(blockNumber));
     }
 
-    private async Task<BlockchainSample?> QueryStats(string[] apiEndpoints, string blockNumber, bool checkBlock = false)
+    private async Task<BlockchainSample?> QueryStats(EndPoints apiEndpoints, string blockNumber, bool checkBlock = false)
     {
         if (apiEndpoints.Length == 0) return null;
 
@@ -285,6 +299,25 @@ public class BlockchainQuery
                 method: "0x70a08231000000000000000000000000" + s_distributorRaw,
                 id: 7,
                 blockNumber),
+            // nftRISE RISE
+            new RpcCall(
+                address: s_riseContract,
+                method: "0x70a08231000000000000000000000000" + s_nftRiseAddressRaw,
+                id: 8,
+                blockNumber),
+            // count of nftRISE
+            new RpcCall(
+                address: s_nftRiseAddress,
+                method: "0x18160ddd000000000000000000000000",
+                id: 9,
+                blockNumber),
+            // count of memeRISE
+            new RpcCall(
+                address: s_memeRiseAddress,
+                method: "0x18160ddd000000000000000000000000",
+                id: 10,
+                blockNumber),
+
         };
 
         var json = JsonSerializer.Serialize(rpc, s_options);
@@ -294,9 +327,8 @@ public class BlockchainQuery
         RpcResult[]? response = null;
         while (response is null)
         {
-            for (int i = 0; i < apiEndpoints.Length; i++)
+            foreach (var apiEndpoint in apiEndpoints)
             {
-                var apiEndpoint = apiEndpoints[i];
 
                 try
                 {
@@ -321,12 +353,15 @@ public class BlockchainQuery
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"{_stats.Chain} : {ex.Message}");
+                    _logger.LogWarning(ex, $"{_chain} : {ex.Message}");
+                    apiEndpoints.FailedEndpoint(apiEndpoint);
                     continue;
                 }
             }
 
-            _logger.LogWarning($"{_stats.Chain} : Tried {apiEndpoints.Length} endpoints, none sucessful.");
+            _logger.LogError($"{_chain} : Tried {apiEndpoints.Length} endpoints, none sucessful.");
+
+            throw new DataException($" Last response: {JsonSerializer.Serialize(response)}");
 
             _nodeClient?.Dispose();
             _nodeClient = GetHttpClient();
@@ -352,7 +387,7 @@ public class BlockchainQuery
         RpcResult responseStats = GetRespose(1, responses);
         if (responseStats?.error is not null)
         {
-            throw new Exception(responseStats.error.message);
+            throw new DataException(responseStats.error.message);
         }
 
         var quatities = new BlockchainSample();
@@ -477,6 +512,29 @@ public class BlockchainQuery
         quatities.usdReservesTokenBalanceValue = quatities.reservesTokenBalanceValue * quatities.tokenPriceStableValue;
 
         quatities.usdReservesBalanceValue = quatities.usdReservesTokenBalanceValue + quatities.usdReservesCoinBalanceValue;
+
+        RpcResult unclaimedRewardsResponse = GetRespose(8, responses);
+        hex = unclaimedRewardsResponse.result.AsSpan(2);
+
+        var unclaimedRewards = hex.Length <= 1 ? 0 : HexToDecimal(hex, false, tokenDivisor);
+
+        quatities.unclaimedTokenBalanceValue = unclaimedRewards;
+        quatities.usdUnclaimedTokenBalanceValue = unclaimedRewards * quatities.tokenPriceStableValue;
+
+        RpcResult stakesResponse = GetRespose(9, responses);
+        hex = stakesResponse.result.AsSpan(2);
+
+        var stakesCount = hex.Length <= 1 ? 0 : HexToDecimal(hex, false);
+
+        quatities.stakesCountValue = stakesCount;
+
+
+        RpcResult mementosCountResponse = GetRespose(10, responses);
+        hex = mementosCountResponse.result.AsSpan(2);
+
+        var mementosCount = hex.Length <= 1 ? 0 : HexToDecimal(hex, false);
+
+        quatities.mementosCountValue = mementosCount;
 
         return quatities;
     }

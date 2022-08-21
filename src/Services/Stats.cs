@@ -1,28 +1,95 @@
 ﻿// Copyright (c) EverRise Pte Ltd. All rights reserved.
 
-using System.IO.Compression;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
+using Contracts.Contracts.EverRise;
 
 using EverStats.Config;
 using EverStats.Data;
 
-using Nethereum.Signer;
-using Nethereum.Web3;
-using Contracts.Contracts.EverRise;
-
-using Sylvan.Data.Csv;
-using System.Runtime.ExceptionServices;
-using System.Net.Sockets;
-using System.Diagnostics;
-using System.Reflection;
-using Azure.Storage.Blobs;
 using Microsoft.Data.SqlClient;
-using static System.Net.WebRequestMethods;
-using Org.BouncyCastle.Asn1.X509;
+
+using Nethereum.Web3;
+
+using System.Collections;
+using System.Diagnostics;
+using System.IO.Compression;
+using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
+using System.Text;
+using System.Text.Json;
 
 namespace EverStats.Services;
+
+public class EndPoints : IEnumerable<string>
+{
+    private object _lock = new object();
+    private string[] _endpoints;
+    private string[] a;
+
+    public EndPoints(string[] a)
+    {
+        _endpoints = a;
+    }
+
+    public int Length => _endpoints.Length;
+
+    public static implicit operator EndPoints(string[] a) => new EndPoints(a);
+
+    public void FailedEndpoint(string endpoint)
+    {
+        lock (_lock)
+        {
+            string[] endpoints = _endpoints;
+
+            endpoints = endpoints.Where(e => e != endpoint)
+                .Append(endpoint).ToArray();
+
+            _endpoints = endpoints;
+        }
+    }
+
+    public struct EndpointEnumerator : IEnumerator<string>
+    {
+        private int _index;
+        private string[] _array;
+
+        public string Current => _array[_index];
+        object IEnumerator.Current => Current;
+
+        public EndpointEnumerator (string[] array)
+        {
+            _index = -1;
+            _array = array;
+        }
+
+        public bool MoveNext()
+        {
+            _index++;
+            return _index < _array.Length;
+        }
+
+        public void Dispose()
+        {
+        }
+
+        public void Reset() => throw new NotSupportedException();
+    }
+
+    public EndpointEnumerator GetEnumerator()
+    {
+        return new EndpointEnumerator(_endpoints);
+    }
+
+    IEnumerator<string> IEnumerable<string>.GetEnumerator()
+    {
+        return (IEnumerator<string>)_endpoints.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return _endpoints.GetEnumerator();
+    }
+}
+
 public class Stats : IHostedService
 {
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
@@ -309,7 +376,8 @@ public class Stats : IHostedService
                 [burnPercent], [totalSupply], [everSwap], [usdReservesCoinBalance], [usdReservesTokenBalance], [usdReservesBalance], 
                 [usdLiquidityToken], [usdLiquidityCoin], [usdStaked], [usdRewards], [usdVolumeBuy], 
                 [usdVolumeSell], [usdVolumeTrade], [usdEverSwap], [supplyOnChainPercent], [stakedOfTotalSupplyPercent], 
-                [stakedOfOnChainPercent], [stakedOfTotalStakedPercent], [veRiseOnChainPercent])
+                [stakedOfOnChainPercent], [stakedOfTotalStakedPercent], [veRiseOnChainPercent], [unclaimedTokenBalance], [usdUnclaimedTokenBalance],
+                [stakesCount], [mementosCount])
             VALUES
                 (@date, @chainId, 
                 @reservesCoinBalance, @reservesTokenBalance, @liquidityToken, @liquidityCoin, @veAmount, @staked, 
@@ -318,7 +386,8 @@ public class Stats : IHostedService
                 @burnPercent, @totalSupply, @everSwap, @usdReservesCoinBalance, @usdReservesTokenBalance, @usdReservesBalance, 
                 @usdLiquidityToken, @usdLiquidityCoin, @usdStaked, @usdRewards, @usdVolumeBuy, 
                 @usdVolumeSell, @usdVolumeTrade, @usdEverSwap, @supplyOnChainPercent, @stakedOfTotalSupplyPercent, 
-                @stakedOfOnChainPercent, @stakedOfTotalStakedPercent, @veRiseOnChainPercent)", conn);
+                @stakedOfOnChainPercent, @stakedOfTotalStakedPercent, @veRiseOnChainPercent, @unclaimedTokenBalance, @usdUnclaimedTokenBalance,
+                @stakesCount, @mementosCount)", conn);
 
                 var param = cmd.Parameters;
                 param.AddWithValue("@date", sample.date);
@@ -362,6 +431,10 @@ public class Stats : IHostedService
                 param.AddWithValue("@stakedOfOnChainPercent", sample.stakedOfOnChainPercentValue);
                 param.AddWithValue("@stakedOfTotalStakedPercent", sample.stakedOfTotalStakedPercentValue);
                 param.AddWithValue("@veRiseOnChainPercent", sample.veRiseOnChainPercentValue);
+                param.AddWithValue("@unclaimedTokenBalance", sample.unclaimedTokenBalanceValue);
+                param.AddWithValue("@usdUnclaimedTokenBalance", sample.usdUnclaimedTokenBalanceValue);
+                param.AddWithValue("@stakesCount", sample.stakesCountValue);
+                param.AddWithValue("@mementosCount", sample.mementosCountValue);
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -443,12 +516,16 @@ public class Stats : IHostedService
         decimal marketCapValue = 0m;
         decimal holdersValue = 0m;
         decimal veAmountValue = 0m;
+        decimal unclaimedTokenBalanceValue = 0m;
 
         decimal usdLiquidityCoinValue = 0m;
         decimal usdEverSwapValue = 0m;
         decimal usdReservesCoinBalanceValue = 0m;
         decimal usdReservesTokenBalanceValue = 0m;
         decimal usdReservesBalanceValue = 0m;
+        decimal usdUnclaimedTokenBalanceValue = 0m;
+        decimal stakesCountValue = 0m;
+        decimal mementosCountValue = 0m;
 
         for (var i = 0; i < samples.Length; i++)
         {
@@ -476,6 +553,11 @@ public class Stats : IHostedService
             usdReservesTokenBalanceValue += chain.usdReservesTokenBalanceValue;
             usdReservesCoinBalanceValue += chain.usdReservesCoinBalanceValue;
             usdReservesBalanceValue += chain.usdReservesBalanceValue;
+            unclaimedTokenBalanceValue += chain.unclaimedTokenBalanceValue;
+            usdUnclaimedTokenBalanceValue += chain.usdUnclaimedTokenBalanceValue;
+
+            stakesCountValue += chain.stakesCountValue;
+            mementosCountValue += chain.mementosCountValue;
         }
 
         decimal usdStakedValue = stakedValue * tokenPriceStableValue;
@@ -485,6 +567,7 @@ public class Stats : IHostedService
         decimal usdVolumeBuyValue = volumeBuyValue * tokenPriceStableValue;
         decimal usdVolumeSellValue = volumeSellValue * tokenPriceStableValue;
         decimal usdVolumeTradeValue = volumeTradeValue * tokenPriceStableValue;
+
 
         for (var i = 0; i < samples.Length; i++)
         {
@@ -545,7 +628,9 @@ public class Stats : IHostedService
 
             usdReservesCoinBalanceValue = usdReservesCoinBalanceValue,
             usdReservesTokenBalanceValue = usdReservesTokenBalanceValue,
-            usdReservesBalanceValue = usdReservesBalanceValue
+            usdReservesBalanceValue = usdReservesBalanceValue,
+            stakesCountValue = stakesCountValue,
+            mementosCountValue = mementosCountValue
         };
 
         sample.CreateStringRepresentations();
@@ -673,7 +758,7 @@ public class Stats : IHostedService
 
         var speedyKey = config.MoralisConfiguration.SpeedyNodeKey;
 
-        _bscQuery = new BlockchainQuery(
+        _bscQuery = new BlockchainQuery("bsc",
             config,
             bsc,
             currentEndpoints: new[] {
@@ -702,7 +787,7 @@ public class Stats : IHostedService
             everSwapAddress: "0x71B089280237672837a23d3c2cC6cFC43424e08E",
             logger: logger);
 
-        _ethQuery = new BlockchainQuery(
+        _ethQuery = new BlockchainQuery("eth",
             config,
             eth,
             currentEndpoints: new[] {
@@ -726,7 +811,7 @@ public class Stats : IHostedService
             everSwapAddress: "0x8dc9b4e0a5688fa4869d438d8720c9621fa777dc",
             logger: logger);
 
-        _polyQuery = new BlockchainQuery(
+        _polyQuery = new BlockchainQuery("polygon",
             config,
             poly,
             currentEndpoints: new[] {
@@ -744,7 +829,7 @@ public class Stats : IHostedService
             everSwapAddress: "0xa3C14Dfb714b9a7827393DC282ee3027e39B5557",
             logger: logger);
 
-        _avaxQuery = new BlockchainQuery(
+        _avaxQuery = new BlockchainQuery("avalanche",
             config,
             avax,
             currentEndpoints: new[] {
@@ -763,7 +848,7 @@ public class Stats : IHostedService
             everSwapAddress: "0x6d9fA4Fb73942A416d89ad3f7553eFefF9b3F74B",
             logger: logger);
 
-        _ftmQuery = new BlockchainQuery(
+        _ftmQuery = new BlockchainQuery("fantom",
             config,
             ftm,
             currentEndpoints: new[] {
@@ -776,6 +861,13 @@ public class Stats : IHostedService
             {
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/fantom/mainnet",
                 "https://rpc.ankr.com/fantom",
+                "https://fantom-mainnet.public.blastapi.io",
+                "https://rpc.ftm.tools",
+                "https://rpcapi.fantom.network",
+                "https://rpc2.fantom.network",
+                "https://rpc.fantom.network",
+                "https://rpc3.fantom.network"
+
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
             everSwapAddress: "0x557E769FC676a07fd04af671037EFfa218DB3F4E",

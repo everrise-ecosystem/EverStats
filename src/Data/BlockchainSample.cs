@@ -49,6 +49,10 @@ public class BlockchainSample
     public decimal stakedOfOnChainPercentValue;
     public decimal stakedOfTotalStakedPercentValue;
     public decimal veRiseOnChainPercentValue;
+    public decimal unclaimedTokenBalanceValue;
+    public decimal usdUnclaimedTokenBalanceValue;
+    public decimal stakesCountValue;
+    public decimal mementosCountValue;
 
 #pragma warning disable IDE1006 // Naming Styles
 #nullable disable
@@ -94,6 +98,10 @@ public class BlockchainSample
     public string stakedOfOnChainPercent { get; set; }
     public string stakedOfTotalStakedPercent { get; set; }
     public string veRiseOnChainPercent { get; set; }
+    public string unclaimedTokenBalance { get; set; }
+    public string usdUnclaimedTokenBalance { get; set; }
+    public string stakesCount { get; set; }
+    public string mementosCount { get; set; }
 #nullable enable
 #pragma warning restore IDE1006 // Naming Styles
 
@@ -142,5 +150,11 @@ public class BlockchainSample
         stakedOfOnChainPercent = stakedOfOnChainPercentValue.ToString("0.00000000");
         stakedOfTotalStakedPercent = stakedOfTotalStakedPercentValue.ToString("0.00000000");
         veRiseOnChainPercent = veRiseOnChainPercentValue.ToString("0.00000000");
+
+        unclaimedTokenBalance = unclaimedTokenBalanceValue.ToString("0.00000000");
+        usdUnclaimedTokenBalance = usdUnclaimedTokenBalanceValue.ToString("0.00000000");
+
+        stakesCount = stakesCountValue.ToString("0.00000000");
+        mementosCount = mementosCountValue.ToString("0.00000000");
     }
 }
