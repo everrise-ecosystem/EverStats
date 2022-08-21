@@ -21,7 +21,7 @@ using Azure.Storage.Blobs;
 using Microsoft.Data.SqlClient;
 
 namespace EverStats.Services;
-public class Stats : IHostedService
+public class QueryTime : IHostedService
 {
     private readonly static MediaTypeWithQualityHeaderValue s_jsonAccept = MediaTypeWithQualityHeaderValue.Parse("application/json");
     private readonly static JsonSerializerOptions _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
@@ -706,7 +706,7 @@ public class Stats : IHostedService
         _stakedAmounts = amounts.ToArray();
     }
 
-    public Stats(ApiConfig config, ILogger<BlockchainQuery> logger)
+    public QueryTime(ApiConfig config, ILogger<BlockchainQuery> logger)
     {
         _logger = logger;
         _config = config;

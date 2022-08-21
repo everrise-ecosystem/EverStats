@@ -10,19 +10,20 @@ using EverStats.Data;
 using Svg.Skia;
 using SkiaSharp;
 
+using Microsoft.Data.SqlClient;
+using System.Data;
+
 namespace EverStats.Services;
 public class TwitterBot : IHostedService
 {
     static StringBuilder s_svg = new StringBuilder();
     private ApiConfig _config;
-    private Stats _stats;
     private CancellationTokenSource _cts = new CancellationTokenSource();
     private Task _generateTweets;
 
-    public TwitterBot(ApiConfig config, Stats stats)
+    public TwitterBot(ApiConfig config)
     {
         _config = config;
-        _stats = stats;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -39,11 +40,134 @@ public class TwitterBot : IHostedService
         return Task.CompletedTask;
     }
 
+    public class ChainSnapshot
+    {
+        public ChainData current { get; set; }
+        public ChainData history24hrs { get; set; }
+    }
+
+    public class Chains
+    {
+        public ChainSnapshot unified { get; set; } = new();
+        public ChainSnapshot eth { get; set; } = new();
+        public ChainSnapshot bsc { get; set; } = new();
+        public ChainSnapshot poly { get; set; } = new();
+        public ChainSnapshot ftm { get; set; } = new();
+        public ChainSnapshot avax { get; set; } = new();
+    }
+
+    public async Task<Chains> GetChainData()
+    {
+        var chains = new Chains();
+        var data = await GetRecentDataSnapshots();
+        foreach (var row in data)
+        {
+            ChainSnapshot? chain = null;
+            switch (row.chainId)
+            {
+                case 0:
+                    chain = chains.unified;
+                    break;
+                case 1:
+                    chain = chains.eth;
+                    break;
+                case 56:
+                    chain = chains.bsc;
+                    break;
+                case 137:
+                    chain = chains.poly;
+                    break;
+                case 250:
+                    chain = chains.ftm;
+                    break;
+                case 43114:
+                    chain = chains.avax;
+                    break;
+            }
+
+            if (chain is null) continue;
+
+            switch (row.entry)
+            {
+                case 1:
+                    chain.current = row;
+                    break;
+                case 2:
+                    chain.history24hrs = row;
+                    break;
+            }
+        }
+
+        return chains;
+    }
+
+    public async Task<List<ChainData>> GetRecentDataSnapshots()
+    {
+        using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
+        using var cmd = new SqlCommand(@"GetRecentChainData", conn);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        await conn.OpenAsync();
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        var data = new List<ChainData>();
+        while (await reader.ReadAsync())
+        {
+            var c = new ChainData();
+            c.entry = reader.GetInt32("entry");
+            c.dateOnly = DateOnly.FromDateTime(reader.GetDateTime("dateOnly"));
+            c.date = reader.GetDateTime("date");
+            c.chainId = reader.GetInt32("chainId");
+
+            c.reservesCoinBalance = reader.GetDecimal("reservesCoinBalance");
+            c.reservesTokenBalance= reader.GetDecimal("reservesTokenBalance");
+            c.liquidityToken= reader.GetDecimal("liquidityToken");
+            c.liquidityCoin= reader.GetDecimal("liquidityCoin");
+            c.veAmount= reader.GetDecimal("veAmount");
+            c.staked= reader.GetDecimal("staked");
+            c.aveMultiplier= reader.GetDecimal("aveMultiplier");
+            c.rewards= reader.GetDecimal("rewards");
+            c.volumeBuy= reader.GetDecimal("volumeBuy");
+            c.volumeSell= reader.GetDecimal("volumeSell");
+            c.volumeTrade= reader.GetDecimal("volumeTrade");
+            c.bridgeVault= reader.GetDecimal("bridgeVault");
+            c.tokenPriceCoin= reader.GetDecimal("tokenPriceCoin");
+            c.coinPriceStable= reader.GetDecimal("coinPriceStable");
+            c.tokenPriceStable= reader.GetDecimal("tokenPriceStable");
+            c.marketCap= reader.GetDecimal("marketCap");
+            c.blockNumber= reader.GetDecimal("blockNumber");
+            c.holders= reader.GetDecimal("holders");
+            c.burn= reader.GetDecimal("burn");
+            c.burnPercent= reader.GetDecimal("burnPercent");
+            c.totalSupply= reader.GetDecimal("totalSupply");
+            c.everSwap= reader.GetDecimal("everSwap");
+            c.usdReservesCoinBalance= reader.GetDecimal("usdReservesCoinBalance");
+            c.usdReservesTokenBalance= reader.GetDecimal("usdReservesTokenBalance");
+            c.usdReservesBalance= reader.GetDecimal("usdReservesBalance");
+            c.usdLiquidityToken= reader.GetDecimal("usdLiquidityToken");
+            c.usdLiquidityCoin= reader.GetDecimal("usdLiquidityCoin");
+            c.usdStaked= reader.GetDecimal("usdStaked");
+            c.usdRewards= reader.GetDecimal("usdRewards");
+            c.usdVolumeBuy= reader.GetDecimal("usdVolumeBuy");
+            c.usdVolumeSell= reader.GetDecimal("usdVolumeSell");
+            c.usdVolumeTrade= reader.GetDecimal("usdVolumeTrade");
+            c.usdEverSwap= reader.GetDecimal("usdEverSwap");
+            c.supplyOnChainPercent= reader.GetDecimal("supplyOnChainPercent");
+            c.stakedOfTotalSupplyPercent= reader.GetDecimal("stakedOfTotalSupplyPercent");
+            c.stakedOfOnChainPercent= reader.GetDecimal("stakedOfOnChainPercent");
+            c.stakedOfTotalStakedPercent= reader.GetDecimal("stakedOfTotalStakedPercent");
+            c.veRiseOnChainPercent= reader.GetDecimal("veRiseOnChainPercent");
+
+            data.Add(c);
+        }
+
+        return data;
+    }
+
     private async Task GenerateTweets()
     {
         var sb = new StringBuilder();
-        await _stats.DataReceived();
-        await Task.Delay(60_000);
 
         while (true)
         {
@@ -64,44 +188,45 @@ public class TwitterBot : IHostedService
 
     private async Task GenerateTweets(StringBuilder sb)
     {
-        var (price, change) = GetPriceChange(_stats.unified);
+        var data = await GetChainData();
+        var (price, change) = GetPriceChange(data.unified);
         sb.AppendLine($"#EverRise $RISE");
         sb.AppendLine();
         sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)}");
-        change = GetChange(_stats.unified.history24hrs?.marketCapValue ?? 0, _stats.unified.current.marketCapValue);
-        sb.AppendLine($"${FormatNumber(_stats.unified.current.marketCapValue)} Market Cap {FormatChange(change)}");
+        change = GetChange(data.unified.history24hrs?.marketCap ?? 0, data.unified.current.marketCap);
+        sb.AppendLine($"${FormatNumber(data.unified.current.marketCap)} Market Cap {FormatChange(change)}");
 
-        change = GetChange(_stats.unified.history24hrs?.holdersValue ?? 0, _stats.unified.current.holdersValue);
-        sb.AppendLine($"{_stats.unified.current.holders:N0} Hodlrs {FormatChange(change)}");
+        change = GetChange(data.unified.history24hrs?.holders ?? 0, data.unified.current.holders);
+        sb.AppendLine($"{data.unified.current.holders:N0} Hodlrs {FormatChange(change)}");
 
         sb.AppendLine();
 
-        (price, change) = GetPriceChange(_stats.eth);
+        (price, change) = GetPriceChange(data.eth);
         sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Eth");
 
-        (price, change) = GetPriceChange(_stats.bsc);
+        (price, change) = GetPriceChange(data.bsc);
         sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #BNB");
 
-        (price, change) = GetPriceChange(_stats.poly);
+        (price, change) = GetPriceChange(data.poly);
         sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Polygon");
 
-        (price, change) = GetPriceChange(_stats.ftm);
+        (price, change) = GetPriceChange(data.ftm);
         sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Ftm");
 
-        (price, change) = GetPriceChange(_stats.avax);
+        (price, change) = GetPriceChange(data.avax);
         sb.AppendLine($"${price:0.000000} {ChangeIcon(change)} {FormatChange(change)} #Avax");
 
         sb.AppendLine();
 
-        //change = GetChange(_stats.unified.history24hrs?.burnPercentValue ?? 0, _stats.unified.current.burnPercentValue);
-        sb.AppendLine($"{FormatPercent(_stats.unified.current.burnPercentValue)} Burn"); //{FormatChange(change)}");
-        change = GetChange(_stats.unified.history24hrs?.usdStakedValue ?? 0, _stats.unified.current.usdStakedValue);
-        sb.AppendLine($"${FormatNumber(_stats.unified.current.usdStakedValue)} Staked TVL");// {FormatChange(change)}");
+        //change = GetChange(data.unified.history24hrs?.burnPercent ?? 0, data.unified.current.burnPercent);
+        sb.AppendLine($"{FormatPercent(data.unified.current.burnPercent)} Burn"); //{FormatChange(change)}");
+        change = GetChange(data.unified.history24hrs?.usdStaked ?? 0, data.unified.current.usdStaked);
+        sb.AppendLine($"${FormatNumber(data.unified.current.usdStaked)} Staked TVL ({FormatPercent(data.unified.current.stakedOfTotalSupplyPercent)})");// {FormatChange(change)}");
         sb.AppendLine();
-        change = GetPercent(_stats.unified.current.usdLiquidityCoinValue, _stats.unified.current.marketCapValue);
-        sb.AppendLine($"${FormatNumber(_stats.unified.current.usdLiquidityCoinValue * 2)} LP");
-        change = GetPercent(_stats.unified.current.usdReservesBalanceValue, _stats.unified.current.marketCapValue);
-        sb.Append($"${FormatNumber(_stats.unified.current.usdReservesBalanceValue)} Reserves");
+        change = GetPercent(data.unified.current.usdLiquidityCoin, data.unified.current.marketCap);
+        sb.AppendLine($"${FormatNumber(data.unified.current.usdLiquidityCoin * 2)} LP");
+        change = GetPercent(data.unified.current.usdReservesBalance, data.unified.current.marketCap);
+        sb.Append($"${FormatNumber(data.unified.current.usdReservesBalance)} Reserves");
         //sb.AppendLine();
         //sb.Append("#BinanceSmartChain #BSC");
 
@@ -119,7 +244,7 @@ public class TwitterBot : IHostedService
             }
         });
 
-        var svgXml = GetSpreadSvg(_stats);
+        var svgXml = GetSpreadSvg(data);
         byte[] imageData;
         using (var svg = new SKSvg())
         {
@@ -161,19 +286,19 @@ public class TwitterBot : IHostedService
         "rgba(255,255,255,1)"
     };
 
-    private static string GetSpreadSvg(Stats stats)
+    private static string GetSpreadSvg(Chains stats)
     {
         var sb = s_svg;
         sb.Clear();
 
-        var unifiedPrice = stats.unified.current.tokenPriceStableValue;
+        var unifiedPrice = stats.unified.current.tokenPriceStable;
         var prices = new decimal[]
         {
-                stats.bsc.current.tokenPriceStableValue,
-                stats.eth.current.tokenPriceStableValue,
-                stats.poly.current.tokenPriceStableValue,
-                stats.ftm.current.tokenPriceStableValue,
-                stats.avax.current.tokenPriceStableValue,
+                stats.bsc.current.tokenPriceStable,
+                stats.eth.current.tokenPriceStable,
+                stats.poly.current.tokenPriceStable,
+                stats.ftm.current.tokenPriceStable,
+                stats.avax.current.tokenPriceStable,
         };
 
         var min = 1000000m;
@@ -304,14 +429,14 @@ public class TwitterBot : IHostedService
         return sb.ToString();
     }
 
-    private static (decimal price, decimal change) GetPriceChange(BlockchainStats chain)
+    private static (decimal price, decimal change) GetPriceChange(ChainSnapshot chain)
     {
-        if (chain.history24hrs is not null && chain.history24hrs.tokenPriceStableValue != 0)
+        if (chain.history24hrs is not null && chain.history24hrs.tokenPriceStable != 0)
         {
-            return (chain.current.tokenPriceStableValue, (chain.current.tokenPriceStableValue - chain.history24hrs.tokenPriceStableValue) / chain.history24hrs.tokenPriceStableValue);
+            return (chain.current.tokenPriceStable, (chain.current.tokenPriceStable - chain.history24hrs.tokenPriceStable) / chain.history24hrs.tokenPriceStable);
         }
 
-        return (chain.current.tokenPriceStableValue, 0);
+        return (chain.current.tokenPriceStable, 0);
     }
 
     static string FormatPercent(decimal change)

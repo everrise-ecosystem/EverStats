@@ -22,17 +22,17 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
     config.StoreInDb = true;
-    config.SendTweets = false;
+    config.SendTweets = true;
 } else
 {
     config.StoreInDb = false;
-    config.SendTweets = true;
+    config.SendTweets = false;
 }
 
 app.UseHttpsRedirection();
 
 app.UseStats();
-app.UseCoinPricing();
+//app.UseCoinPricing();
 app.UseStaticFiles();
 
 app.Run();
