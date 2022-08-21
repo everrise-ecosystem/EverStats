@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Azure.Storage.Blobs;
 using Microsoft.Data.SqlClient;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace EverStats.Services;
 public class QueryTime : IHostedService
@@ -27,6 +28,7 @@ public class QueryTime : IHostedService
     private readonly static JsonSerializerOptions _options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     private readonly ILogger<BlockchainQuery> _logger;
     private readonly ApiConfig _config;
+    private readonly HolderList _holders;
     private CancellationTokenSource _cts = new CancellationTokenSource();
     private SemaphoreSlim _calcSemaphore = new SemaphoreSlim(0);
     private SemaphoreSlim _serializeSemaphore = new SemaphoreSlim(0);
@@ -574,53 +576,6 @@ public class QueryTime : IHostedService
     }
 
     static ChainInfo[] _chains;
-    private string[]  _addresses;
-
-    private Task _loadHolderListTask;
-
-    private Task DownloadHolderLists()
-    {
-        // Create a BlobServiceClient object which will be used to create a container client
-        BlobServiceClient blobServiceClient = new BlobServiceClient(_config.AzureConfiguration.StorageConnection);
-
-        // Create the container and return a container client object
-        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient("holder-data");
-
-        List<Task> downloads = new();
-        foreach (var coin in _chains)
-        {
-            var fileName = $"{coin.Chain}-tokenholders-for-contract-0xc17c30e98541188614df99239cabd40280810ca3.csv";
-            var destination = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), fileName);
-
-            BlobClient blobClient = containerClient.GetBlobClient(fileName);
-
-            downloads.Add(blobClient.DownloadToAsync(destination));
-        }
-
-        return Task.WhenAll(downloads);
-    }
-
-    private async Task LoadHolderList()
-    {
-        await DownloadHolderLists();
-
-        var addressesSet = new HashSet<string>();
-        foreach (var coin in _chains)
-        {
-            var fileName = $"{coin.Chain}-tokenholders-for-contract-0xc17c30e98541188614df99239cabd40280810ca3.csv";
-            var file = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), fileName);
-            using var csv = CsvDataReader.Create(file);
-
-            while (await csv.ReadAsync())
-            {
-                var id = csv.GetString(0);
-                addressesSet.Add(id);
-            }
-        }
-
-        _addresses = addressesSet.ToArray();
-    }
-
 
     private static async Task<decimal> GetLocked(Web3 web3, string[] addresses)
     {
@@ -687,11 +642,13 @@ public class QueryTime : IHostedService
     }
 
     private async Task RegenerateStakeAmounts()
-    {
+{
+        var addresses = await _holders.GetHolderList();
+
         var tasks = new List<Task<(int ChainId, decimal Locked)>>();
         foreach (var chain in _chains)
         {
-            tasks.Add(GetLocked(chain, _addresses));
+            tasks.Add(GetLocked(chain, addresses));
         }
 
         await Task.WhenAll(tasks);
@@ -706,10 +663,11 @@ public class QueryTime : IHostedService
         _stakedAmounts = amounts.ToArray();
     }
 
-    public QueryTime(ApiConfig config, ILogger<BlockchainQuery> logger)
+    public QueryTime(ApiConfig config, HolderList holders, ILogger<BlockchainQuery> logger)
     {
         _logger = logger;
         _config = config;
+        _holders = holders;
 
         var speedyKey = config.MoralisConfiguration.SpeedyNodeKey;
 
@@ -856,13 +814,11 @@ public class QueryTime : IHostedService
                 Stats = avax
             }
         };
-
-        _loadHolderListTask = LoadHolderList();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await _loadHolderListTask;
+        await _holders.GetHolderList();
 
         BscQueryTask = Query(_bscQuery);
         EthQueryTask = Query(_ethQuery);

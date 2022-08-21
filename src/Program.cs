@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 var config = ApiConfig.GetConfiguration();
 builder.Services
     .AddSingleton<ApiConfig>(config)
+    .AddSingleton<HolderList>()
     .AddSingleton<Stats>()
     .AddHostedService(provider => provider.GetRequiredService<Stats>())
     .AddHostedService<TwitterBot>()
@@ -26,7 +27,7 @@ if (!app.Environment.IsDevelopment())
 } else
 {
     config.StoreInDb = false;
-    config.SendTweets = false;
+    config.SendTweets = true;
 }
 
 app.UseHttpsRedirection();

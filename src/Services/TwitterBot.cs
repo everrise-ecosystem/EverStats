@@ -12,18 +12,21 @@ using SkiaSharp;
 
 using Microsoft.Data.SqlClient;
 using System.Data;
+using EverStats.Api;
 
 namespace EverStats.Services;
 public class TwitterBot : IHostedService
 {
     static StringBuilder s_svg = new StringBuilder();
     private ApiConfig _config;
+    private ILogger _logger;
     private CancellationTokenSource _cts = new CancellationTokenSource();
     private Task _generateTweets;
 
-    public TwitterBot(ApiConfig config)
+    public TwitterBot(ApiConfig config, ILoggerFactory loggerFactory)
     {
         _config = config;
+        _logger = loggerFactory.CreateLogger<TwitterBot>();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -258,13 +261,23 @@ public class TwitterBot : IHostedService
 
         if (_config.SendTweets)
         {
+            var wasError = false;
             if (imageData != null)
             {
-                var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
-                var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
-                await twitterContext.TweetMediaAsync(tweet, mediaIds);
+                try
+                {
+                    var uploadedMedia = await twitterContext.UploadMediaAsync(imageData, "image/png", "tweet_image");
+                    var mediaIds = new List<string> { uploadedMedia.MediaID.ToString("0") };
+                    await twitterContext.TweetMediaAsync(tweet, mediaIds);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.ToString());
+                    wasError = true;
+                }
             }
-            else
+
+            if (imageData is null || wasError)
             {
                 await twitterContext.TweetAsync(tweet);
             }
