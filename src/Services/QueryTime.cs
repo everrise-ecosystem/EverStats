@@ -483,6 +483,7 @@ public class QueryTime : IHostedService
             },
             archiveEndpoints: new[]
             {
+                "https://bsc-mainnet.nodereal.io/v1/77a6ad1e2ca847ebae6f3632119c2bba",
                 $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/bsc/mainnet/archive",
                 "https://rpc.ankr.com/bsc",
             },
@@ -605,7 +606,7 @@ public class QueryTime : IHostedService
 
             Console.WriteLine($"block at {result.unified.date:dddd dd MMM yyyy HH:mm:ss}");
 
-            await Task.Delay(30_000);
+            await Task.Delay(15_000);
         }
     }
 

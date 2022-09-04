@@ -38,16 +38,6 @@ public class BlockchainQuery
     private readonly string _chain;
     private ApiConfig _config;
 
-    private DateTimeOffset _lastHistoryCheck24hrs;
-    private DateTimeOffset _lastHistoryCheck48hrs;
-    private DateTimeOffset _lastHistoryCheck7day;
-    private DateTimeOffset _lastHistoryCheck14day;
-
-    private Task _history24hrTask = Task.CompletedTask;
-    private Task _history48hrTask = Task.CompletedTask;
-    private Task _history7dayTask = Task.CompletedTask;
-    private Task _history14dayTask = Task.CompletedTask;
-
     private DateTimeOffset _avaxFtmLaunch = new DateTimeOffset(new DateTime(2022, 04, 04, 1, 0, 00));
 
     private ILogger<BlockchainQuery> _logger;
@@ -111,127 +101,6 @@ public class BlockchainQuery
         {
             _stats.history14day = _stats.current;
         }
-
-        var now = DateTimeOffset.UtcNow;
-        if (_history24hrTask.IsCompleted)
-        {
-            _history24hrTask = GetDataHistoricData(now, Period.History24hr);
-        }
-
-        if (_history48hrTask.IsCompleted)
-        {
-            _history48hrTask = GetDataHistoricData(now, Period.History48hr);
-        }
-
-        if (_history7dayTask.IsCompleted)
-        {
-            _history7dayTask = GetDataHistoricData(now, Period.History7day);
-        }
-
-        if (_history14dayTask.IsCompleted)
-        {
-            _history14dayTask = GetDataHistoricData(now, Period.History14day);
-        }
-    }
-
-    public async Task GetDataHistoricData(DateTimeOffset date, Period period)
-    {
-        try
-        {
-            var historyCheck = period switch
-            {
-                Period.History24hr => _lastHistoryCheck24hrs,
-                Period.History48hr => _lastHistoryCheck48hrs,
-                Period.History7day => _lastHistoryCheck7day,
-                Period.History14day => _lastHistoryCheck14day,
-                _ => _lastHistoryCheck24hrs,
-            };
-
-            var days = period switch
-            {
-                Period.History24hr => 1,
-                Period.History48hr => 2,
-                Period.History7day => 7,
-                Period.History14day => 14,
-                _ => 0,
-            };
-
-            var queryDate = DateTimeOffset.UtcNow.AddDays(-days);
-
-            BlockchainSample historyData = null;
-            if (queryDate < _avaxFtmLaunch)
-            {
-                historyData = new BlockchainSample();
-            }
-            else if ((date - historyCheck).TotalHours > 0.5)
-            {
-                var blockNumber = await QueryBlock(queryDate);
-                if (blockNumber == 0) throw new InvalidDataException("Zero block number");
-
-                historyData = await QueryStats(ArchiveEndpoints, "0x" + NumberToHex(blockNumber));
-            }
-
-            if (historyData is not null)
-            {
-                historyData.date = queryDate.ToString("s");
-
-                switch (period)
-                {
-                    case Period.History24hr:
-                        _stats.history24hrs = historyData;
-                        _lastHistoryCheck24hrs = date;
-                        break;
-                    case Period.History48hr:
-                        _stats.history48hrs = historyData;
-                        _lastHistoryCheck48hrs = date;
-                        break;
-                    case Period.History7day:
-                        _stats.history7day = historyData;
-                        _lastHistoryCheck7day = date;
-                        break;
-                    case Period.History14day:
-                        _stats.history14day = historyData;
-                        _lastHistoryCheck14day = date;
-                        break;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            var checkDate = date.Subtract(TimeSpan.FromHours(0.25));
-            switch (period)
-            {
-                case Period.History24hr:
-                    _lastHistoryCheck24hrs = checkDate;
-                    break;
-                case Period.History48hr:
-                    _lastHistoryCheck48hrs = checkDate;
-                    break;
-                case Period.History7day:
-                    _lastHistoryCheck7day = checkDate;
-                    break;
-                case Period.History14day:
-                    _lastHistoryCheck14day = checkDate;
-                    break;
-            }
-
-            Console.WriteLine($"{_chain} {period} : {ex.Message}");
-            _web3Client?.Dispose();
-            _web3Client = GetHttpClient();
-            _web3Client.DefaultRequestHeaders.Add("X-API-Key", _config.MoralisConfiguration.Web3ApiKey);
-        }
-
-        await Task.Delay(600_0000);
-    }
-
-    private async Task<int> QueryBlock(DateTimeOffset date)
-    {
-        var timeStamp = date.ToUnixTimeSeconds();
-        var response = await _web3Client.GetAsync($"https://deep-index.moralis.io/api/v2/dateToBlock?chain={_chain}&date={timeStamp:0}");
-        response.EnsureSuccessStatusCode();
-        var data = await response.Content.ReadAsStringAsync();
-        var nearest = JsonSerializer.Deserialize<NearestBlock>(data);
-        return nearest.block;
     }
 
     private static string NumberToHex(int estimatedBlock)
@@ -250,10 +119,10 @@ public class BlockchainQuery
         return blockNumber.Substring(i);
     }
 
-    public Task<BlockchainSample?> QueryHistoricStats(int blockNumber)
-    {
-        return QueryStats(ArchiveEndpoints, "0x" + NumberToHex(blockNumber));
-    }
+    //public Task<BlockchainSample?> QueryHistoricStats(int blockNumber)
+    //{
+    //    return QueryStats(ArchiveEndpoints, "0x" + NumberToHex(blockNumber));
+    //}
 
     private async Task<BlockchainSample?> QueryStats(EndPoints apiEndpoints, string blockNumber, bool checkBlock = false)
     {
@@ -329,7 +198,6 @@ public class BlockchainQuery
         {
             foreach (var apiEndpoint in apiEndpoints)
             {
-
                 try
                 {
                     response = await QueryEndpoint(apiEndpoint, content);
@@ -360,11 +228,11 @@ public class BlockchainQuery
             }
 
             _logger.LogError($"{_chain} : Tried {apiEndpoints.Length} endpoints, none sucessful.");
+            _nodeClient?.Dispose();
+            _nodeClient = GetHttpClient();
 
             throw new DataException($" Last response: {JsonSerializer.Serialize(response)}");
 
-            _nodeClient?.Dispose();
-            _nodeClient = GetHttpClient();
             await Task.Delay(200);
         }
 

@@ -44,5 +44,10 @@
         public decimal stakedOfOnChainPercent { get; set; }
         public decimal stakedOfTotalStakedPercent { get; set; }
         public decimal veRiseOnChainPercent { get; set; }
+
+        public decimal unclaimedTokenBalance { get; set; }
+        public decimal usdUnclaimedTokenBalance { get; set; }
+        public decimal stakesCount { get; set; }
+        public decimal mementosCount { get; set; }
     }
 }

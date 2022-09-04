@@ -3,6 +3,57 @@
 namespace EverStats.Data;
 public class BlockchainSample
 {
+    public BlockchainSample() { }
+    public BlockchainSample(ChainData data) {
+        date = data.date.ToString("yyyy-MM-ddTHH:mm:ss");
+        lastStored = date;
+
+        reservesTokenBalanceValue = data.reservesTokenBalance;
+        reservesCoinBalanceValue = data.reservesCoinBalance;
+        liquidityTokenValue = data.liquidityToken;
+        liquidityCoinValue = data.liquidityCoin;
+        veAmountValue = data.veAmount;
+        stakedValue = data.staked;
+        aveMultiplierValue = data.aveMultiplier;
+        rewardsValue = data.rewards;
+        volumeBuyValue = data.volumeBuy;
+        volumeSellValue = data.volumeSell;
+        volumeTradeValue = data.volumeTrade;
+        bridgeVaultValue = data.bridgeVault;
+        tokenPriceCoinValue = data.tokenPriceCoin;
+        coinPriceStableValue = data.coinPriceStable;
+        tokenPriceStableValue = data.tokenPriceStable;
+        marketCapValue = data.marketCap;
+        blockNumberValue = data.blockNumber;
+        holdersValue = data.holders;
+        burnValue = data.burn;
+        burnPercentValue = data.burnPercent;
+        totalSupplyValue = data.totalSupply;
+        everSwapValue = data.everSwap;
+
+        usdReservesTokenBalanceValue = data.usdReservesTokenBalance;
+        usdReservesCoinBalanceValue = data.usdReservesCoinBalance;
+        usdReservesBalanceValue = data.usdReservesBalance;
+        usdLiquidityTokenValue = data.usdLiquidityToken;
+        usdLiquidityCoinValue = data.usdLiquidityCoin;
+        usdStakedValue = data.usdStaked;
+        usdRewardsValue = data.usdRewards;
+        usdVolumeBuyValue = data.usdVolumeBuy;
+        usdVolumeSellValue = data.usdVolumeSell;
+        usdVolumeTradeValue = data.usdVolumeTrade;
+        usdEverSwapValue = data.usdEverSwap;
+
+        supplyOnChainPercentValue = data.supplyOnChainPercent;
+        stakedOfTotalSupplyPercentValue = data.stakedOfTotalSupplyPercent;
+        stakedOfOnChainPercentValue = data.stakedOfOnChainPercent;
+        stakedOfTotalStakedPercentValue = data.stakedOfTotalStakedPercent;
+        veRiseOnChainPercentValue = data.veRiseOnChainPercent;
+        unclaimedTokenBalanceValue = data.unclaimedTokenBalance;
+        usdUnclaimedTokenBalanceValue = data.usdUnclaimedTokenBalance;
+        stakesCountValue = data.stakesCount;
+        mementosCountValue = data.mementosCount;
+    }
+
     public string? date { get; set; }
     public string? lastStored = null;
 

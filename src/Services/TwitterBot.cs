@@ -43,10 +43,44 @@ public class TwitterBot : IHostedService
         return Task.CompletedTask;
     }
 
+    public class OhlcVol
+    {
+        public DateOnly dateValue;
+        public decimal openValue;
+        public decimal lowValue;
+        public decimal highValue;
+        public decimal closeValue;
+        public decimal averageValue;
+        public decimal volumeValue;
+
+        public string date { get; set; }
+        public string open { get; set; }
+        public string low { get; set; }
+        public string high { get; set; }
+        public string close { get; set; }
+        public string average { get; set; }
+        public string volume { get; set; }
+
+        public void CreateStringRepresentations()
+        {
+            date = dateValue.ToString("yyyy-MM-dd");
+            open = openValue.ToString("0.00000000");
+            low = lowValue.ToString("0.00000000");
+            high = highValue.ToString("0.00000000");
+            close = closeValue.ToString("0.00000000");
+            average = averageValue.ToString("0.00000000");
+            volume = volumeValue.ToString("0.00000000");
+        }
+    }
+
     public class ChainSnapshot
     {
         public ChainData current { get; set; }
         public ChainData history24hrs { get; set; }
+        public ChainData history48hrs { get; set; }
+        public ChainData history7day { get; set; }
+        public ChainData history14day { get; set; }
+        public List<OhlcVol> ohlc { get; set; } = new();
     }
 
     public class Chains
@@ -62,7 +96,11 @@ public class TwitterBot : IHostedService
     public async Task<Chains> GetChainData()
     {
         var chains = new Chains();
-        var data = await GetRecentDataSnapshots();
+
+        using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
+        await conn.OpenAsync();
+
+        var data = await GetRecentDataSnapshots(conn);
         foreach (var row in data)
         {
             ChainSnapshot? chain = null;
@@ -98,19 +136,78 @@ public class TwitterBot : IHostedService
                 case 2:
                     chain.history24hrs = row;
                     break;
+                case 3:
+                    chain.history48hrs = row;
+                    break;
+                case 4:
+                    chain.history7day = row;
+                    break;
+                case 5:
+                    chain.history14day = row;
+                    break;
             }
         }
+
+        await AddOlhcData(chains, conn);
 
         return chains;
     }
 
-    public async Task<List<ChainData>> GetRecentDataSnapshots()
+    private async Task AddOlhcData(Chains chains, SqlConnection conn)
     {
-        using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
-        using var cmd = new SqlCommand(@"GetRecentChainData", conn);
+        using var cmd = new SqlCommand(@"Get14DayCandleData", conn);
         cmd.CommandType = CommandType.StoredProcedure;
 
-        await conn.OpenAsync();
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            var chainId = reader.GetInt32("chainId");
+            ChainSnapshot? chain = null;
+            switch (chainId)
+            {
+                case 0:
+                    chain = chains.unified;
+                    break;
+                case 1:
+                    chain = chains.eth;
+                    break;
+                case 56:
+                    chain = chains.bsc;
+                    break;
+                case 137:
+                    chain = chains.poly;
+                    break;
+                case 250:
+                    chain = chains.ftm;
+                    break;
+                case 43114:
+                    chain = chains.avax;
+                    break;
+                default:
+                    continue;
+            }
+
+            var c = new OhlcVol();
+            c.dateValue = DateOnly.FromDateTime(reader.GetDateTime("date"));
+
+            c.openValue = reader.GetDecimal("Open");
+            c.lowValue = reader.GetDecimal("Low");
+            c.highValue = reader.GetDecimal("High");
+            c.closeValue = reader.GetDecimal("Close");
+            c.averageValue = reader.GetDecimal("Avg");
+            c.volumeValue = reader.GetDecimal("Vol");
+
+            c.CreateStringRepresentations();
+
+            chain.ohlc.Add(c);
+        }
+    }
+
+    public async Task<List<ChainData>> GetRecentDataSnapshots(SqlConnection conn)
+    {
+        using var cmd = new SqlCommand(@"GetRecentChainData", conn);
+        cmd.CommandType = CommandType.StoredProcedure;
 
         using var reader = await cmd.ExecuteReaderAsync();
 
@@ -161,6 +258,17 @@ public class TwitterBot : IHostedService
             c.stakedOfOnChainPercent= reader.GetDecimal("stakedOfOnChainPercent");
             c.stakedOfTotalStakedPercent= reader.GetDecimal("stakedOfTotalStakedPercent");
             c.veRiseOnChainPercent= reader.GetDecimal("veRiseOnChainPercent");
+
+            if (!reader.IsDBNull("unclaimedTokenBalance"))
+            {
+                c.unclaimedTokenBalance = reader.GetDecimal("unclaimedTokenBalance");
+                c.usdUnclaimedTokenBalance = reader.GetDecimal("usdUnclaimedTokenBalance");
+            }
+            if (!reader.IsDBNull("stakesCount"))
+            {
+                c.veRiseOnChainPercent = reader.GetDecimal("stakesCount");
+                c.veRiseOnChainPercent = reader.GetDecimal("mementosCount");
+            }
 
             data.Add(c);
         }
@@ -257,6 +365,7 @@ public class TwitterBot : IHostedService
             imageData = bitmapSteam.ToArray();
         }
 
+        File.WriteAllBytes(@"C:\GitHub\everrise-ecosystem\data\docs\graph.png", imageData);
         //imageData = File.ReadAllBytes(@"C:\Users\thund\OneDrive\Pictures\coin\binance.jpg");
 
         if (_config.SendTweets)
@@ -304,14 +413,145 @@ public class TwitterBot : IHostedService
         var sb = s_svg;
         sb.Clear();
 
+        var graphWidth = 420;
+        sb.Append($@"<svg version=""1.1"" xmlns=""http://www.w3.org/2000/svg"" xmlns:xlink=""http://www.w3.org/1999/xlink"" x=""0px"" y=""0px"" viewBox=""0 0 {graphWidth} {graphWidth}"" xml:space=""preserve"">");
+        sb.Append(@"
+<style type=""text/css"">
+.graph-text-title{
+    font-family: 'Montserrat';
+    stroke: none;
+    font-size: 12px;
+    fill: white;
+    font-weight:bold;
+}
+.graph-text-percent, .graph-text-price{
+    font-family: 'Lato';
+    stroke: none;
+    font-size: 11px;
+}
+.graph-text-percent{
+    fill: silver;
+}
+.graph-text-price{
+    fill: silver;
+    font-size: 9px;
+}
+.graph-background {
+    fill: rgb(0, 8, 24);
+}
+.redBar {
+    stroke: rgba(255, 0, 0, 0.5);
+    fill: rgba(128, 0, 0, 0.5);
+}
+.greenBar {
+    stroke: rgba(0, 255, 0, 0.5);
+    fill: rgba(0, 128, 0, 0.5);
+}
+</style>
+");
+        sb.Append($@"<g>
+                <rect class=""graph-background"" width=""{graphWidth}"" height=""{graphWidth}"" />");
+
+        DrawSpread(stats, graphWidth, sb);
+        DrawTimeSeries(stats, graphWidth, sb);
+
+        sb.Append(@"</g></svg>");
+
+        return sb.ToString();
+    }
+
+    private static void DrawTimeSeries(Chains stats, int graphWidth, StringBuilder sb)
+    {
+        var minVol = decimal.MaxValue;
+        var maxVol = decimal.MinValue;
+
+        foreach (var ohlc in stats.unified.ohlc)
+        {
+            if (maxVol < ohlc.volumeValue) maxVol = ohlc.volumeValue;
+            if (minVol > ohlc.volumeValue) minVol = ohlc.volumeValue;
+        }
+
+        var prices = new List<OhlcVol>[]
+        {
+            stats.bsc.ohlc,
+            stats.eth.ohlc,
+            stats.poly.ohlc,
+            stats.ftm.ohlc,
+            stats.avax.ohlc,
+            stats.unified.ohlc
+        };
+
+        var minPrice = decimal.MaxValue;
+        var maxPrice = decimal.MinValue;
+        foreach (var ohlcList in prices)
+        {
+            foreach (var ohlc in ohlcList)
+            {
+                if (maxPrice < ohlc.averageValue) maxPrice = ohlc.averageValue;
+                if (minPrice > ohlc.averageValue) minPrice = ohlc.averageValue;
+            }
+        }
+
+        sb.Append($@"
+                <g transform=""translate(0, {graphWidth / 3:0.0})"" class=""graph-priceGraph"">
+                <text text-anchor=""middle"" x=""{graphWidth / 2:0.0}"" y=""0"" class=""graph-text-title"">Last 14 Days Arbitrage</text>
+                <g transform=""translate(0, 20)"" class=""graph-priceRange"">");
+
+        sb.Append($@"<path fill=""none"" stroke=""rgb(128,128,128)"" d=""M 15 {graphWidth / 2 + 35 } h {graphWidth - 20} M 15 {graphWidth / 2 + 35} v -{graphWidth / 2 + 35} "" />");
+
+        var barWidth = (decimal)graphWidth / (stats.unified.ohlc.Count + 2);
+        var x = barWidth;
+        var volRange = maxVol - minVol;
+        var maxHeight = graphWidth / 16m + graphWidth / 4m;
+
+        foreach (var ohlc in stats.unified.ohlc)
+        {
+            var color = ohlc.openValue > ohlc.closeValue ? "redBar" : "greenBar";
+            var vol = (ohlc.volumeValue - minVol) / volRange;
+            var height = graphWidth / 32 + vol * graphWidth / 8;
+
+            sb.Append($@"
+                <rect class=""{color}"" x=""{x + 4:0.0}"" y=""{graphWidth / 4 + maxHeight - height:0.0}"" width=""{barWidth - 4:0.0}"" height=""{height:0.0}"" />");
+
+            x += barWidth;
+        }
+
+        var priceRange = maxPrice - minPrice;
+        var colorIndex = 0;
+        maxHeight = graphWidth / 2m;
+        foreach (var ohlcList in prices)
+        {
+            sb.Append($@"
+                <path stroke=""{colors[colorIndex]}""  stroke-width=""{(colorIndex < 5 ? 2 : 4)}"" fill=""none"" d=""");
+            x = barWidth * 1.5m;
+            var type = "M";
+            foreach (var ohlc in ohlcList)
+            {
+                var y = maxHeight - (ohlc.averageValue - minPrice) / priceRange * maxHeight;
+                sb.Append($"{type} {x:0.0} {y:0.0} ");
+                type = "L";
+                x += barWidth;
+            }
+            sb.Append($@""" />");
+
+            colorIndex++;
+        }
+
+        sb.Append($@"
+                </g></g>");
+
+    }
+
+    private static void DrawSpread(Chains stats, int graphWidth, StringBuilder sb)
+    {
         var unifiedPrice = stats.unified.current.tokenPriceStable;
         var prices = new decimal[]
         {
-                stats.bsc.current.tokenPriceStable,
-                stats.eth.current.tokenPriceStable,
-                stats.poly.current.tokenPriceStable,
-                stats.ftm.current.tokenPriceStable,
-                stats.avax.current.tokenPriceStable,
+            stats.bsc.current.tokenPriceStable,
+            stats.eth.current.tokenPriceStable,
+            stats.poly.current.tokenPriceStable,
+            stats.ftm.current.tokenPriceStable,
+            stats.avax.current.tokenPriceStable,
         };
 
         var min = 1000000m;
@@ -336,39 +576,9 @@ public class TwitterBot : IHostedService
 
         var positions = new decimal[prices.Length];
 
-        var graphWidth = 420;
-        sb.Append($@"<svg version=""1.1"" xmlns=""http://www.w3.org/2000/svg"" xmlns:xlink=""http://www.w3.org/1999/xlink"" x=""0px"" y=""0px"" viewBox=""0 0 {graphWidth} {graphWidth / 2}"" xml:space=""preserve"">");
-        sb.Append(@"
-<style type=""text/css"">
-.graph-text-title{
-    font-family: 'Montserrat';
-    stroke: none;
-    font-size: 12px;
-    fill: white;
-    font-weight:bold;
-}
-.graph-text-percent, .graph-text-price{
-    font-family: 'Lato';
-    stroke: none;
-    font-size: 11px;
-}
-.graph-text-percent{
-    fill: silver;
-}
-.graph-text-price{
-    fill: silver;
-    font-size: 9px;
-}
-.graph-background {
-    fill: rgb(0, 17, 48);
-}
-</style>
-");
-        sb.Append($@"<g>
-                <rect class=""graph-background"" width=""{graphWidth}"" height=""{graphWidth / 2}"" />
-
-                <g transform=""translate(0, 55)"" class=""graph-priceRange"">
-                <text text-anchor=""middle"" x=""{graphWidth / 2}"" y=""0"" class=""graph-text-title"">EverBridge Arbitrage</text>
+        sb.Append($@"
+                <g transform=""translate(0, 20)"" class=""graph-priceRange"">
+                <text text-anchor=""middle"" x=""{graphWidth / 2}"" y=""0"" class=""graph-text-title"">Current EverBridge Arbitrage</text>
                 <g transform=""translate(0, 20)"" class=""graph-priceRange"">");
 
         for (var i = 0; i < prices.Length; i++)
@@ -436,10 +646,7 @@ public class TwitterBot : IHostedService
 
         }
 
-        sb.Append(@"</g></g></g>");
-        sb.Append(@"</svg>");
-
-        return sb.ToString();
+        sb.Append(@"</g></g>");
     }
 
     private static (decimal price, decimal change) GetPriceChange(ChainSnapshot chain)

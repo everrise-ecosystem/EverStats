@@ -9,6 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Scripts\charting_library\**" />
+    <Compile Remove="Middleware\PricingMiddleware.cs" />
+    <None Remove="Scripts\file.ts" />
+    <None Remove="Scripts\graph.ts" />
+  </ItemGroup>
+
+
+  <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
     <PackageReference Include="linqtotwitter" Version="6.15.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.0" />
@@ -21,18 +29,6 @@
     <PackageReference Include="Nethereum.StandardTokenEIP20" Version="4.7.0" />
     <PackageReference Include="Nethereum.Web3" Version="4.7.0" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.1.16" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="avx-tokenholders-for-contract-0xc17c30e98541188614df99239cabd40280810ca3.csv">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="eth-tokenholders-for-contract-0xC17c30e98541188614dF99239cABD40280810cA3.csv">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="poly-tokenholders-for-contract-0xc17c30e98541188614df99239cabd40280810ca3.csv">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

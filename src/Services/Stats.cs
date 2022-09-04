@@ -10,12 +10,15 @@ using Microsoft.Data.SqlClient;
 using Nethereum.Web3;
 
 using System.Collections;
+using System.Data;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
+
+using static EverStats.Services.TwitterBot;
 
 namespace EverStats.Services;
 
@@ -122,26 +125,12 @@ public class Stats : IHostedService
     public byte[] JsonBytesBr = Array.Empty<byte>();
     public byte[] JsonBytesGzip = Array.Empty<byte>();
 
-    public async Task<decimal> QueryCoinPrice(string chain, int blockNumber)
-    {
-        var stats = await (chain switch
-        {
-            "eth" => _ethQuery.QueryHistoricStats(blockNumber),
-            "bsc" => _ethQuery.QueryHistoricStats(blockNumber),
-            "poly" => _ethQuery.QueryHistoricStats(blockNumber),
-            "ftm" => _ethQuery.QueryHistoricStats(blockNumber),
-            "avax" => _ethQuery.QueryHistoricStats(blockNumber),
-            _ => null
-        });
-
-        return stats.coinPriceStableValue;
-    }
-
     internal Task DataReceived()
     {
         return _dataSemaphore.WaitAsync();
     }
 
+    private Task HistoryTask = Task.CompletedTask;
     private Task BscQueryTask = Task.CompletedTask;
     private Task EthQueryTask = Task.CompletedTask;
     private Task PolyQueryTask = Task.CompletedTask;
@@ -206,70 +195,28 @@ public class Stats : IHostedService
                 {
                     var staked = stakedAmounts[i];
                     BlockchainSample quatities = null;
-                    BlockchainSample history24hrs = null;
-                    BlockchainSample history48hrs = null;
-                    BlockchainSample history7day = null;
-                    BlockchainSample history14day = null;
                     switch (staked.id)
                     {
                         case "1":
                             quatities = eth.current;
-                            history24hrs = eth.history24hrs;
-                            history48hrs = eth.history48hrs;
-                            history7day = eth.history7day;
-                            history14day = eth.history14day;
                             break;
                         case "56":
                             quatities = bsc.current;
-                            history24hrs = bsc.history24hrs;
-                            history48hrs = bsc.history48hrs;
-                            history7day = bsc.history7day;
-                            history14day = bsc.history14day;
                             break;
                         case "137":
                             quatities = poly.current;
-                            history24hrs = poly.history24hrs;
-                            history48hrs = poly.history48hrs;
-                            history7day = poly.history7day;
-                            history14day = poly.history14day;
                             break;
                         case "250":
                             quatities = ftm.current;
-                            history24hrs = ftm.history24hrs;
-                            history48hrs = ftm.history48hrs;
-                            history7day = ftm.history7day;
-                            history14day = ftm.history14day;
                             break;
                         case "43114":
                             quatities = avax.current;
-                            history24hrs = avax.history24hrs;
-                            history48hrs = avax.history48hrs;
-                            history7day = avax.history7day;
-                            history14day = avax.history14day;
                             break;
                     }
 
                     quatities.stakedValue = (decimal)staked.amount;
                     quatities.aveMultiplierValue = quatities.veAmountValue / quatities.stakedValue;
                     quatities.usdStakedValue = quatities.stakedValue * quatities.tokenPriceStableValue;
-
-                    if (history24hrs != null)
-                    {
-                        history24hrs.stakedValue = quatities.stakedValue;
-                    }
-                    if (history48hrs != null)
-                    {
-                        history48hrs.stakedValue = quatities.stakedValue;
-                    }
-                    if (history7day != null)
-                    {
-                        history7day.stakedValue = quatities.stakedValue;
-                    }
-                    if (history14day != null)
-                    {
-                        history14day.stakedValue = quatities.stakedValue;
-                    }
-
                 }
             }
             catch (Exception ex)
@@ -302,10 +249,13 @@ public class Stats : IHostedService
             await StoreInDb();
         }
 
-        sample = Recalculate(bsc.history24hrs, eth.history24hrs, poly.history24hrs, ftm.history24hrs, avax.history24hrs);
-        if (sample is not null)
+        if (bsc.history24hrs != null && eth.history24hrs != null && poly.history24hrs != null && ftm.history24hrs != null && avax.history24hrs != null)
         {
-            unified.history24hrs = sample;
+            sample = Recalculate(bsc.history24hrs, eth.history24hrs, poly.history24hrs, ftm.history24hrs, avax.history24hrs);
+            if (sample is not null)
+            {
+                unified.history24hrs = sample;
+            }
         }
 
         if (bsc.history48hrs != null && eth.history48hrs != null && poly.history48hrs != null && ftm.history48hrs != null && avax.history48hrs != null)
@@ -444,6 +394,262 @@ public class Stats : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex.ToString());
+        }
+    }
+
+
+
+    public class ChainSnapshot
+    {
+        public ChainData current { get; set; }
+        public ChainData history24hrs { get; set; }
+        public ChainData history48hrs { get; set; }
+        public ChainData history7day { get; set; }
+        public ChainData history14day { get; set; }
+        public List<OhlcVol> ohlc { get; set; } = new();
+    }
+
+    public class Chains
+    {
+        public ChainSnapshot unified { get; set; } = new();
+        public ChainSnapshot eth { get; set; } = new();
+        public ChainSnapshot bsc { get; set; } = new();
+        public ChainSnapshot poly { get; set; } = new();
+        public ChainSnapshot ftm { get; set; } = new();
+        public ChainSnapshot avax { get; set; } = new();
+    }
+
+    public async Task<Chains> GetChainData()
+    {
+        var chains = new Chains();
+
+        using var conn = new SqlConnection(_config.AzureConfiguration.SqlConnection);
+        await conn.OpenAsync();
+
+        var data = await GetRecentDataSnapshots(conn);
+        foreach (var row in data)
+        {
+            ChainSnapshot? chain = null;
+            switch (row.chainId)
+            {
+                case 0:
+                    chain = chains.unified;
+                    break;
+                case 1:
+                    chain = chains.eth;
+                    break;
+                case 56:
+                    chain = chains.bsc;
+                    break;
+                case 137:
+                    chain = chains.poly;
+                    break;
+                case 250:
+                    chain = chains.ftm;
+                    break;
+                case 43114:
+                    chain = chains.avax;
+                    break;
+            }
+
+            if (chain is null) continue;
+
+            switch (row.entry)
+            {
+                case 1:
+                    chain.current = row;
+                    break;
+                case 2:
+                    chain.history24hrs = row;
+                    break;
+                case 3:
+                    chain.history48hrs = row;
+                    break;
+                case 4:
+                    chain.history7day = row;
+                    break;
+                case 5:
+                    chain.history14day = row;
+                    break;
+            }
+        }
+
+        await AddOlhcData(chains, conn);
+
+        return chains;
+    }
+
+    private async Task AddOlhcData(Chains chains, SqlConnection conn)
+    {
+        using var cmd = new SqlCommand(@"Get14DayCandleData", conn);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            var chainId = reader.GetInt32("chainId");
+            ChainSnapshot? chain = null;
+            switch (chainId)
+            {
+                case 0:
+                    chain = chains.unified;
+                    break;
+                case 1:
+                    chain = chains.eth;
+                    break;
+                case 56:
+                    chain = chains.bsc;
+                    break;
+                case 137:
+                    chain = chains.poly;
+                    break;
+                case 250:
+                    chain = chains.ftm;
+                    break;
+                case 43114:
+                    chain = chains.avax;
+                    break;
+                default:
+                    continue;
+            }
+
+            var c = new OhlcVol();
+            c.dateValue = DateOnly.FromDateTime(reader.GetDateTime("date"));
+
+            c.openValue = reader.GetDecimal("Open");
+            c.lowValue = reader.GetDecimal("Low");
+            c.highValue = reader.GetDecimal("High");
+            c.closeValue = reader.GetDecimal("Close");
+            c.averageValue = reader.GetDecimal("Avg");
+            c.volumeValue = reader.GetDecimal("Vol");
+
+            c.CreateStringRepresentations();
+
+            chain.ohlc.Add(c);
+        }
+    }
+
+    public async Task<List<ChainData>> GetRecentDataSnapshots(SqlConnection conn)
+    {
+        using var cmd = new SqlCommand(@"GetRecentChainData", conn);
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        var data = new List<ChainData>();
+        while (await reader.ReadAsync())
+        {
+            var c = new ChainData();
+            c.entry = reader.GetInt32("entry");
+            c.dateOnly = DateOnly.FromDateTime(reader.GetDateTime("dateOnly"));
+            c.date = reader.GetDateTime("date");
+            c.chainId = reader.GetInt32("chainId");
+
+            c.reservesCoinBalance = reader.GetDecimal("reservesCoinBalance");
+            c.reservesTokenBalance = reader.GetDecimal("reservesTokenBalance");
+            c.liquidityToken = reader.GetDecimal("liquidityToken");
+            c.liquidityCoin = reader.GetDecimal("liquidityCoin");
+            c.veAmount = reader.GetDecimal("veAmount");
+            c.staked = reader.GetDecimal("staked");
+            c.aveMultiplier = reader.GetDecimal("aveMultiplier");
+            c.rewards = reader.GetDecimal("rewards");
+            c.volumeBuy = reader.GetDecimal("volumeBuy");
+            c.volumeSell = reader.GetDecimal("volumeSell");
+            c.volumeTrade = reader.GetDecimal("volumeTrade");
+            c.bridgeVault = reader.GetDecimal("bridgeVault");
+            c.tokenPriceCoin = reader.GetDecimal("tokenPriceCoin");
+            c.coinPriceStable = reader.GetDecimal("coinPriceStable");
+            c.tokenPriceStable = reader.GetDecimal("tokenPriceStable");
+            c.marketCap = reader.GetDecimal("marketCap");
+            c.blockNumber = reader.GetDecimal("blockNumber");
+            c.holders = reader.GetDecimal("holders");
+            c.burn = reader.GetDecimal("burn");
+            c.burnPercent = reader.GetDecimal("burnPercent");
+            c.totalSupply = reader.GetDecimal("totalSupply");
+            c.everSwap = reader.GetDecimal("everSwap");
+            c.usdReservesCoinBalance = reader.GetDecimal("usdReservesCoinBalance");
+            c.usdReservesTokenBalance = reader.GetDecimal("usdReservesTokenBalance");
+            c.usdReservesBalance = reader.GetDecimal("usdReservesBalance");
+            c.usdLiquidityToken = reader.GetDecimal("usdLiquidityToken");
+            c.usdLiquidityCoin = reader.GetDecimal("usdLiquidityCoin");
+            c.usdStaked = reader.GetDecimal("usdStaked");
+            c.usdRewards = reader.GetDecimal("usdRewards");
+            c.usdVolumeBuy = reader.GetDecimal("usdVolumeBuy");
+            c.usdVolumeSell = reader.GetDecimal("usdVolumeSell");
+            c.usdVolumeTrade = reader.GetDecimal("usdVolumeTrade");
+            c.usdEverSwap = reader.GetDecimal("usdEverSwap");
+            c.supplyOnChainPercent = reader.GetDecimal("supplyOnChainPercent");
+            c.stakedOfTotalSupplyPercent = reader.GetDecimal("stakedOfTotalSupplyPercent");
+            c.stakedOfOnChainPercent = reader.GetDecimal("stakedOfOnChainPercent");
+            c.stakedOfTotalStakedPercent = reader.GetDecimal("stakedOfTotalStakedPercent");
+            c.veRiseOnChainPercent = reader.GetDecimal("veRiseOnChainPercent");
+
+            if (!reader.IsDBNull("unclaimedTokenBalance"))
+            {
+                c.unclaimedTokenBalance = reader.GetDecimal("unclaimedTokenBalance");
+                c.usdUnclaimedTokenBalance = reader.GetDecimal("usdUnclaimedTokenBalance");
+            }
+            if (!reader.IsDBNull("stakesCount"))
+            {
+                c.veRiseOnChainPercent = reader.GetDecimal("stakesCount");
+                c.veRiseOnChainPercent = reader.GetDecimal("mementosCount");
+            }
+
+            data.Add(c);
+        }
+
+        return data;
+    }
+
+    public async Task GetDataHistoricData()
+    {
+        while (!_cts.IsCancellationRequested)
+        {
+            var waitTime = TimeSpan.FromMinutes(15);
+
+            try
+            {
+                var chainData = await GetChainData();
+
+                unified.history24hrs = new BlockchainSample(chainData.unified.history24hrs);
+                unified.history48hrs = new BlockchainSample(chainData.unified.history48hrs);
+                unified.history7day = new BlockchainSample(chainData.unified.history7day);
+                unified.history14day = new BlockchainSample(chainData.unified.history14day);
+
+                bsc.history24hrs = new BlockchainSample(chainData.bsc.history24hrs);
+                bsc.history48hrs = new BlockchainSample(chainData.bsc.history48hrs);
+                bsc.history7day = new BlockchainSample(chainData.bsc.history7day);
+                bsc.history14day = new BlockchainSample(chainData.bsc.history14day);
+
+                eth.history24hrs = new BlockchainSample(chainData.eth.history24hrs);
+                eth.history48hrs = new BlockchainSample(chainData.eth.history48hrs);
+                eth.history7day = new BlockchainSample(chainData.eth.history7day);
+                eth.history14day = new BlockchainSample(chainData.eth.history14day);
+
+                poly.history24hrs = new BlockchainSample(chainData.poly.history24hrs);
+                poly.history48hrs = new BlockchainSample(chainData.poly.history48hrs);
+                poly.history7day = new BlockchainSample(chainData.poly.history7day);
+                poly.history14day = new BlockchainSample(chainData.poly.history14day);
+
+                ftm.history24hrs = new BlockchainSample(chainData.ftm.history24hrs);
+                ftm.history48hrs = new BlockchainSample(chainData.ftm.history48hrs);
+                ftm.history7day = new BlockchainSample(chainData.ftm.history7day);
+                ftm.history14day = new BlockchainSample(chainData.ftm.history14day);
+
+                avax.history24hrs = new BlockchainSample(chainData.avax.history24hrs);
+                avax.history48hrs = new BlockchainSample(chainData.avax.history48hrs);
+                avax.history7day = new BlockchainSample(chainData.avax.history7day);
+                avax.history14day = new BlockchainSample(chainData.avax.history14day);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+
+                waitTime = TimeSpan.FromSeconds(30);
+            }
+
+            await Task.Delay(waitTime);
         }
     }
 
@@ -629,6 +835,8 @@ public class Stats : IHostedService
             usdReservesCoinBalanceValue = usdReservesCoinBalanceValue,
             usdReservesTokenBalanceValue = usdReservesTokenBalanceValue,
             usdReservesBalanceValue = usdReservesBalanceValue,
+            unclaimedTokenBalanceValue = unclaimedTokenBalanceValue,
+            usdUnclaimedTokenBalanceValue = usdUnclaimedTokenBalanceValue,
             stakesCountValue = stakesCountValue,
             mementosCountValue = mementosCountValue
         };
@@ -675,14 +883,20 @@ public class Stats : IHostedService
         return totalStaked;
     }
 
-    private async Task<(int ChainId, decimal Locked)> GetLocked(ChainInfo chain, string[] addresses)
+    private async Task<(int ChainId, decimal Locked)> GetLockedInner(ChainInfo chain, string[] addresses)
     {
         Exception ex = null;
-        foreach (var endpoint in chain.Query.CurrentEndpoints)
+        var endpoints = chain.Query.CurrentEndpoints;
+        foreach (var endpoint in endpoints)
         {
             try
             {
                 var data = (chain.ChainId, await GetLocked(new Web3(endpoint), addresses));
+                if (data.Item2 == 0)
+                {
+                    throw new InvalidDataException($"Zero locked tokens for {chain.Chain}");
+                }
+
                 _logger.LogInformation($"Locked Tokens for {chain.Chain} is {data.Item2}");
 
                 return data;
@@ -690,6 +904,7 @@ public class Stats : IHostedService
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
+                endpoints.FailedEndpoint(endpoint);
                 ex = e;
             }
         }
@@ -697,6 +912,29 @@ public class Stats : IHostedService
         ExceptionDispatchInfo.Throw(ex);
         throw ex;
     }
+
+    private async Task<(int ChainId, decimal Locked)> GetLocked(ChainInfo chain, string[] addresses)
+    {
+        Exception ex = null;
+        var retries = 0;
+        while (retries < 4) {
+            try
+            {
+                return await GetLockedInner(chain, addresses);
+            }
+            catch (Exception)
+            {
+            }
+
+            retries--;
+
+            await Task.Delay(10000 * retries);
+        }
+
+        ExceptionDispatchInfo.Throw(ex);
+        throw ex;
+    }
+
 
     private StakeAmounts[] _stakedAmounts;
 
@@ -775,12 +1013,11 @@ public class Stats : IHostedService
                 "https://bsc-dataseed1.binance.org/",
                 "https://bsc-dataseed2.binance.org/",
                 "https://bsc-dataseed3.binance.org/",
-                "https://bsc-dataseed4.binance.org/",
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/bsc/mainnet"
+                "https://bsc-dataseed4.binance.org/"
             },
             archiveEndpoints: new[]
             {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/bsc/mainnet/archive",
+                "https://bsc-mainnet.nodereal.io/v1/77a6ad1e2ca847ebae6f3632119c2bba",
                 "https://rpc.ankr.com/bsc",
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
@@ -793,7 +1030,6 @@ public class Stats : IHostedService
             currentEndpoints: new[] {
                 "https://rpc.ankr.com/eth",
                 "https://mainnet.infura.io/v3/00df9e302326440a8c6c35255a17c265",
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/eth/mainnet",
                 "https://main-light.eth.linkpool.io",
                 "https://eth-rpc.gateway.pokt.network",
                 "https://mainnet-nethermind.blockscout.com",
@@ -804,7 +1040,6 @@ public class Stats : IHostedService
             },
             archiveEndpoints: new[]
             {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/eth/mainnet/archive",
                 "https://rpc.ankr.com/eth",
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
@@ -815,14 +1050,12 @@ public class Stats : IHostedService
             config,
             poly,
             currentEndpoints: new[] {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/polygon/mainnet",
                 "https://rpc-mainnet.maticvigil.com/v1/9f9c72670ae63ead023c7cb64594c31c021e7e14",
                 "https://polygon-rpc.com/",
                 "https://rpc.ankr.com/polygon",
             },
             archiveEndpoints: new[]
             {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/polygon/mainnet/archive",
                 "https://rpc.ankr.com/polygon"
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
@@ -838,11 +1071,9 @@ public class Stats : IHostedService
                 "https://avalancheapi.terminet.io/ext/bc/C/rpc",
                 "https://rpc.ankr.com/avalanche-c",
                 "https://api.avax.network/ext/bc/C/rpc",
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/avalanche/mainnet"
             },
             archiveEndpoints: new string[]
             {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/avalanche/mainnet"
             },
             statsContractAddress: "0x889f26f688f0b757F84e5C07bf9FeC6D6c368Af2",
             everSwapAddress: "0x6d9fA4Fb73942A416d89ad3f7553eFefF9b3F74B",
@@ -852,14 +1083,12 @@ public class Stats : IHostedService
             config,
             ftm,
             currentEndpoints: new[] {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/fantom/mainnet",
                 "https://rpcapi.fantom.network/",
                 "https://rpc.ankr.com/fantom",
                 "https://rpcapi.fantom.network",
             },
             archiveEndpoints: new string[]
             {
-                $"https://speedy-nodes-nyc.moralis.io/{speedyKey}/fantom/mainnet",
                 "https://rpc.ankr.com/fantom",
                 "https://fantom-mainnet.public.blastapi.io",
                 "https://rpc.ftm.tools",
@@ -917,6 +1146,7 @@ public class Stats : IHostedService
     {
         await _holders.GetHolderList();
 
+        HistoryTask = GetDataHistoricData();
         BscQueryTask = Query(_bscQuery);
         EthQueryTask = Query(_ethQuery);
         PolyQueryTask = Query(_polyQuery);

@@ -9,11 +9,12 @@ var config = ApiConfig.GetConfiguration();
 builder.Services
     .AddSingleton<ApiConfig>(config)
     .AddSingleton<HolderList>()
-    .AddSingleton<QueryTime>()
-    .AddHostedService(provider => provider.GetRequiredService<QueryTime>())
+    //.AddSingleton<QueryTime>()
+    //.AddHostedService(provider => provider.GetRequiredService<QueryTime>())
     //.AddSingleton<Stats>()
     //.AddHostedService(provider => provider.GetRequiredService<Stats>())
     .AddHostedService<TwitterBot>()
+    .AddControllers()
     ;
 
 var app = builder.Build();
@@ -25,14 +26,17 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
     config.StoreInDb = true;
-    config.SendTweets = true;
+    config.SendTweets = false;
 } else
 {
     config.StoreInDb = false;
-    config.SendTweets = false;
+    config.SendTweets = true;
 }
 
+app.MapGet("/time", () => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
 app.UseHttpsRedirection();
+app.MapControllers();
 
 //app.UseStats();
 //app.UseCoinPricing();
